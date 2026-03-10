@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assistir Aula | Encontro UP Online</title>
+  <link rel="icon" href="img/up.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #27abb6;
+      --primary-rgb: 39,171,182;
+      --bg: #000000;
+      --text: #ffffff;
+      --muted: #d1d5d8;
+      --card: #101414;
+      --card-border: #1e2627;
+      --danger: #ff5656;
+      --success: #22e386;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Montserrat', system-ui, sans-serif;
+      color: var(--text);
+      background: linear-gradient(145deg, #000000, #061112 55%, #082024);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* NAV */
+    .nav { padding: 14px 0; border-bottom: 1px solid #1e2627; background: rgba(0,0,0,.5); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
+    .nav-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { font-size: 1.1rem; font-weight: 800; color: var(--primary); text-decoration: none; }
+    .nav-logo span { color: #fff; font-weight: 600; }
+    .nav-user { display: flex; align-items: center; gap: 14px; }
+    .nav-name { font-size: .78rem; color: #9bd5da; font-weight: 600; }
+    .nav-live { font-size: .62rem; font-weight: 700; color: #fff; background: var(--primary); padding: 4px 10px; border-radius: 20px; letter-spacing: .5px; display: flex; align-items: center; gap: 5px; }
+    .nav-live::before { content: ''; width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: blink 1.5s infinite; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+    .btn-logout { background: #173337; border: 1px solid #1f4d52; color: #b8dadd; padding: 8px 14px; border-radius: 10px; font-size: .72rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: .25s; }
+    .btn-logout:hover { background: #1d4045; color: #fff; }
+
+    .main { max-width: 960px; margin: 0 auto; padding: 24px; }
+
+    /* ===== CUSTOM VIDEO PLAYER ===== */
+    .player-container { margin-bottom: 24px; border-radius: 20px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); background: #000; position: relative; }
+    .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; cursor: pointer; }
+    .video-area video { width: 100%; height: 100%; display: block; }
+
+    /* Big play overlay */
+    .big-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.4); z-index: 10; transition: opacity .3s; }
+    .big-play.hidden { opacity: 0; pointer-events: none; }
+    .big-play-btn { width: 80px; height: 80px; background: rgba(var(--primary-rgb), .85); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(var(--primary-rgb), .5); transition: transform .2s; }
+    .big-play-btn:hover { transform: scale(1.1); }
+    .big-play-btn svg { width: 32px; height: 32px; fill: #fff; margin-left: 4px; }
+
+    /* Tab away overlay */
+    .tab-away-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 20; backdrop-filter: blur(6px); }
+    .tab-away-overlay.show { display: flex; }
+    .tab-away-overlay .icon { font-size: 2.5rem; }
+    .tab-away-overlay .msg { font-size: .88rem; color: #b8dadd; font-weight: 600; text-align: center; max-width: 320px; line-height: 1.4; }
+    .tab-away-overlay .btn-resume { background: var(--primary); color: #002b30; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: .88rem; cursor: pointer; font-family: inherit; }
+
+    /* ===== CONTROLS BAR ===== */
+    .controls { background: #0a1213; padding: 0; }
+
+    /* Heatmap scrubber */
+    .scrubber-wrap { position: relative; height: 32px; cursor: pointer; padding: 10px 0; }
+    .heatmap-bar { position: absolute; top: 12px; left: 0; right: 0; height: 8px; display: flex; border-radius: 4px; overflow: hidden; background: #1a2223; }
+    .heatmap-segment { height: 100%; transition: background .3s; }
+    .scrubber-played { position: absolute; top: 12px; left: 0; height: 8px; background: rgba(var(--primary-rgb), .5); border-radius: 4px 0 0 4px; pointer-events: none; z-index: 2; }
+    .scrubber-thumb { position: absolute; top: 8px; width: 16px; height: 16px; background: var(--primary); border: 2px solid #fff; border-radius: 50%; transform: translateX(-50%); z-index: 3; pointer-events: none; box-shadow: 0 0 8px rgba(var(--primary-rgb),.6); transition: left .1s; }
+    .scrubber-tooltip { position: absolute; top: -28px; transform: translateX(-50%); background: #1a2e30; color: #d5f7fa; padding: 4px 8px; border-radius: 8px; font-size: .65rem; font-weight: 700; pointer-events: none; display: none; white-space: nowrap; z-index: 5; }
+    .scrubber-wrap:hover .scrubber-tooltip { display: block; }
+
+    /* Buttons row */
+    .controls-row { display: flex; align-items: center; gap: 6px; padding: 8px 14px 10px; }
+    .ctrl-btn { background: none; border: none; color: #b8dadd; cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: .2s; }
+    .ctrl-btn:hover { background: #1a2e30; color: #fff; }
+    .ctrl-btn svg { width: 20px; height: 20px; fill: currentColor; }
+    .ctrl-time { font-size: .72rem; color: #7fa6aa; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 100px; }
+    .ctrl-spacer { flex: 1; }
+    .ctrl-speed { background: #132326; border: 1px solid #204347; color: #9bd5da; padding: 4px 8px; border-radius: 8px; font-size: .65rem; font-weight: 700; cursor: pointer; font-family: inherit; min-width: 40px; text-align: center; }
+    .ctrl-speed:hover { background: #1d4045; color: #fff; }
+    .ctrl-vol-wrap { display: flex; align-items: center; gap: 4px; }
+    .ctrl-vol-slider { -webkit-appearance: none; width: 70px; height: 4px; background: #1a2223; border-radius: 4px; outline: none; cursor: pointer; }
+    .ctrl-vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--primary); border-radius: 50%; cursor: pointer; }
+    .ctrl-fullscreen { margin-left: 2px; }
+
+    /* ===== ANALYTICS PANEL ===== */
+    .analytics-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .a-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 16px 18px; position: relative; overflow: hidden; }
+    .a-card::before { content: ''; position: absolute; top: 0; right: 0; width: 60px; height: 60px; background: radial-gradient(circle, rgba(var(--primary-rgb),.12), transparent 70%); }
+    .a-icon { font-size: 1.3rem; margin-bottom: 6px; }
+    .a-value { font-size: 1.5rem; font-weight: 800; line-height: 1; margin-bottom: 2px; }
+    .a-label { font-size: .65rem; color: #7fa6aa; text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+    .a-card.success .a-value { color: var(--success); }
+    .a-card.warn .a-value { color: #f5c518; }
+    .a-card.primary .a-value { color: var(--primary); }
+
+    /* Heatmap legend */
+    .heatmap-legend { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding: 12px 16px; background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; }
+    .heatmap-legend-title { font-size: .72rem; font-weight: 700; color: #9bd5da; }
+    .heatmap-legend-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; flex: 1; }
+    .hl-0 { background: #1a2223; flex: 1; }
+    .hl-1 { background: #1a3a40; flex: 1; }
+    .hl-2 { background: #1e7e86; flex: 1; }
+    .hl-3 { background: #27abb6; flex: 1; }
+    .hl-4 { background: #6edbe4; flex: 1; }
+    .heatmap-legend-labels { display: flex; justify-content: space-between; font-size: .58rem; color: #556b6e; margin-top: 2px; }
+    .heatmap-legend-labels span:last-child { color: var(--primary); }
+
+    /* Engagement ring */
+    .engagement-ring { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; padding: 20px; background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; }
+    .ring-svg { width: 100px; height: 100px; flex-shrink: 0; }
+    .ring-bg { fill: none; stroke: #1a2223; stroke-width: 8; }
+    .ring-fill { fill: none; stroke: var(--primary); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+    .ring-text { font-size: 1.3rem; font-weight: 800; fill: #fff; text-anchor: middle; dominant-baseline: central; font-family: 'Montserrat', sans-serif; }
+    .ring-info h3 { font-size: 1rem; color: #fff; margin-bottom: 4px; }
+    .ring-info p { font-size: .78rem; color: #7fa6aa; line-height: 1.45; }
+    .ring-info .ring-detail { margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .ring-info .ring-detail span { font-size: .68rem; background: #132326; padding: 4px 10px; border-radius: 8px; border: 1px solid #204347; color: #9bd5da; font-weight: 600; }
+
+    /* CLASS INFO */
+    .class-info { background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; padding: 24px; margin-bottom: 24px; }
+    .class-info h2 { font-size: 1.2rem; color: var(--primary); margin-bottom: 8px; }
+    .class-info p { font-size: .85rem; color: #b7dfe4; line-height: 1.55; }
+    .class-info .mentor-tag { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; background: #132628; padding: 8px 14px; border-radius: 12px; border: 1px solid #21484d; font-size: .78rem; color: #9bd5da; font-weight: 600; }
+
+    /* NOTES */
+    .notes-section { background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; padding: 24px; }
+    .notes-section h3 { font-size: .95rem; color: var(--primary); margin-bottom: 12px; }
+    .notes-textarea { width: 100%; min-height: 120px; background: #0b1213; color: var(--text); border: 2px solid #1c2a2c; border-radius: 14px; padding: 14px; font-size: .88rem; font-family: inherit; resize: vertical; outline: none; transition: .25s; }
+    .notes-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(var(--primary-rgb), .3); }
+    .notes-saved { font-size: .68rem; color: var(--success); margin-top: 6px; opacity: 0; transition: .3s; }
+    .notes-saved.show { opacity: 1; }
+
+    footer { text-align: center; color: var(--muted); font-size: .68rem; padding: 40px 24px; letter-spacing: .5px; }
+
+    @media (max-width: 600px) {
+      .analytics-panel { grid-template-columns: repeat(2, 1fr); }
+      .a-value { font-size: 1.2rem; }
+      .engagement-ring { flex-direction: column; text-align: center; }
+      .ring-info .ring-detail { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="encontro-online.html" class="nav-logo">Encontro <span>UP</span></a>
+      <div class="nav-user">
+        <div class="nav-live">ASSISTINDO</div>
+        <span class="nav-name" id="userName">—</span>
+        <button class="btn-logout" onclick="logout()">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- ===== CUSTOM VIDEO PLAYER ===== -->
+    <div class="player-container" id="playerContainer">
+      <div class="video-area" id="videoArea">
+        <!-- COLOQUE SEU VÍDEO NA PASTA: video/aula.mp4 -->
+        <video id="vid" preload="metadata" playsinline>
+          <source src="video/aula.mp4" type="video/mp4">
+        </video>
+        <div class="big-play" id="bigPlay">
+          <div class="big-play-btn">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+        <div class="tab-away-overlay" id="tabAwayOverlay">
+          <div class="icon">👀</div>
+          <div class="msg">Parece que você saiu da aba.<br>O vídeo foi pausado automaticamente.</div>
+          <button class="btn-resume" onclick="resumeFromTab()">Continuar Assistindo</button>
+        </div>
+      </div>
+
+      <!-- CONTROLS -->
+      <div class="controls">
+        <!-- Heatmap Scrubber -->
+        <div class="scrubber-wrap" id="scrubberWrap">
+          <div class="heatmap-bar" id="heatmapBar"></div>
+          <div class="scrubber-played" id="scrubberPlayed"></div>
+          <div class="scrubber-thumb" id="scrubberThumb"></div>
+          <div class="scrubber-tooltip" id="scrubberTooltip">0:00</div>
+        </div>
+        <!-- Buttons -->
+        <div class="controls-row">
+          <!-- Play/Pause -->
+          <button class="ctrl-btn" id="btnPlayPause" title="Play/Pause">
+            <svg id="iconPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="iconPause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+          <!-- Rewind 10s -->
+          <button class="ctrl-btn" title="-10s" onclick="vid.currentTime = Math.max(0, vid.currentTime - 10)">
+            <svg viewBox="0 0 24 24"><path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/><text x="12" y="15.5" text-anchor="middle" font-size="7" fill="currentColor" font-weight="700">10</text></svg>
+          </button>
+          <!-- Forward 10s -->
+          <button class="ctrl-btn" title="+10s" onclick="vid.currentTime = Math.min(vid.duration || 0, vid.currentTime + 10)">
+            <svg viewBox="0 0 24 24"><path d="M12.01 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/><text x="12" y="15.5" text-anchor="middle" font-size="7" fill="currentColor" font-weight="700">10</text></svg>
+          </button>
+          <!-- Time -->
+          <span class="ctrl-time" id="ctrlTime">0:00 / 0:00</span>
+          <div class="ctrl-spacer"></div>
+          <!-- Speed -->
+          <button class="ctrl-speed" id="btnSpeed" title="Velocidade" onclick="cycleSpeed()">1x</button>
+          <!-- Volume -->
+          <div class="ctrl-vol-wrap">
+            <button class="ctrl-btn" id="btnMute" title="Mudo" onclick="toggleMute()">
+              <svg id="iconVol" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            </button>
+            <input type="range" class="ctrl-vol-slider" id="volSlider" min="0" max="1" step="0.05" value="1" oninput="vid.volume=this.value" />
+          </div>
+          <!-- Fullscreen -->
+          <button class="ctrl-btn ctrl-fullscreen" title="Tela cheia" onclick="toggleFS()">
+            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== HEATMAP LEGEND ===== -->
+    <div class="heatmap-legend">
+      <span class="heatmap-legend-title">Mapa de visualização:</span>
+      <div style="flex:1;">
+        <div class="heatmap-legend-bar">
+          <div class="hl-0"></div><div class="hl-1"></div><div class="hl-2"></div><div class="hl-3"></div><div class="hl-4"></div>
+        </div>
+        <div class="heatmap-legend-labels"><span>Não assistiu</span><span>Assistiu muito</span></div>
+      </div>
+    </div>
+
+    <!-- ===== ENGAGEMENT RING ===== -->
+    <div class="engagement-ring">
+      <svg class="ring-svg" viewBox="0 0 120 120">
+        <circle class="ring-bg" cx="60" cy="60" r="50" />
+        <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="50"
+          stroke-dasharray="314.16" stroke-dashoffset="314.16"
+          transform="rotate(-90 60 60)" />
+        <text class="ring-text" id="ringText" x="60" y="60">0%</text>
+      </svg>
+      <div class="ring-info">
+        <h3 id="engTitle">Engajamento da Aula</h3>
+        <p id="engDesc">Comece a assistir para ver seu progresso real. Medimos cada segundo que você realmente assistiu.</p>
+        <div class="ring-detail">
+          <span id="detailRealTime">⏱ Real: 0 min</span>
+          <span id="detailSessions">🔄 Sessões: 1</span>
+          <span id="detailSpeed">⚡ Velocidade: 1x</span>
+          <span id="detailTab">👁 Foco: 100%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ANALYTICS CARDS ===== -->
+    <div class="analytics-panel">
+      <div class="a-card primary">
+        <div class="a-icon">⏱️</div>
+        <div class="a-value" id="aRealTime">0:00</div>
+        <div class="a-label">Tempo Real Assistido</div>
+      </div>
+      <div class="a-card">
+        <div class="a-icon">📍</div>
+        <div class="a-value" id="aFarthest">0:00</div>
+        <div class="a-label">Ponto Mais Longe</div>
+      </div>
+      <div class="a-card">
+        <div class="a-icon">🔁</div>
+        <div class="a-value" id="aRewatches">0</div>
+        <div class="a-label">Trechos Reassistidos</div>
+      </div>
+      <div class="a-card warn">
+        <div class="a-icon">⏩</div>
+        <div class="a-value" id="aSkips">0</div>
+        <div class="a-label">Pulos Pra Frente</div>
+      </div>
+      <div class="a-card success" id="aCompletionCard" style="display:none;">
+        <div class="a-icon">✅</div>
+        <div class="a-value">Concluído!</div>
+        <div class="a-label">Aula Assistida</div>
+      </div>
+    </div>
+
+    <!-- CLASS INFO -->
+    <div class="class-info">
+      <h2>Encontro UP — Construindo Uma Vida Mais Leve</h2>
+      <p>Encontro completo de Inteligência Emocional com dinâmica de alto impacto e exercício guiado para controlar a ansiedade. Aprenda técnicas práticas para reduzir o estresse, melhorar seus relacionamentos e viver de forma mais leve.</p>
+      <div class="mentor-tag">👨‍🏫 Conduzido por Rodrigo Damaceno</div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="notes-section">
+      <h3>📝 Suas Anotações</h3>
+      <textarea class="notes-textarea" id="notesArea" placeholder="Anote os pontos mais importantes da aula aqui..."></textarea>
+      <div class="notes-saved" id="notesSaved">✓ Salvo automaticamente</div>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2026 Instituto UP — Todos os direitos reservados.</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script>
+  const API_URL = window.FORM_CONFIG?.ONLINE_SERVER_URL || 'http://localhost:5175';
+
+  // ===== AUTH =====
+  const token = localStorage.getItem('up_token');
+  const user = JSON.parse(localStorage.getItem('up_user') || 'null');
+  if (!token || !user) window.location.href = 'encontro-online.html';
+  document.getElementById('userName').textContent = user?.name || '—';
+
+  function logout() {
+    localStorage.removeItem('up_token');
+    localStorage.removeItem('up_user');
+    window.location.href = 'encontro-online.html';
+  }
+
+  // ===== VIDEO ELEMENTS =====
+  const vid = document.getElementById('vid');
+  const bigPlay = document.getElementById('bigPlay');
+  const scrubberWrap = document.getElementById('scrubberWrap');
+  const heatmapBar = document.getElementById('heatmapBar');
+  const scrubberPlayed = document.getElementById('scrubberPlayed');
+  const scrubberThumb = document.getElementById('scrubberThumb');
+  const scrubberTooltip = document.getElementById('scrubberTooltip');
+
+  // ===== TRACKING STATE =====
+  const SEGMENTS = 100; // divide video into 100 segments for heatmap
+  let segmentWatchCount = new Array(SEGMENTS).fill(0); // how many times each segment was watched
+  let isPlaying = false;
+  let lastTickTime = 0;
+  let totalRealSeconds = 0;     // actual seconds playing (excludes tab-away, paused)
+  let farthestPoint = 0;        // farthest second reached
+  let forwardSkips = 0;         // times user jumped forward
+  let rewatchCount = 0;         // times user went back to rewatch
+  let lastTimeUpdate = 0;       // used to detect skips
+  let sessionCount = 1;
+  let tabFocusTime = Date.now();
+  let tabBlurTotal = 0;         // total ms tab was blurred
+  let tabBlurStart = 0;
+  let currentSpeed = 1;
+  let completed = false;
+  let pageStartTime = Date.now();
+  let lastSyncTime = 0;
+
+  // ===== FORMAT HELPERS =====
+  function fmt(s) {
+    s = Math.floor(Math.max(0, s));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return h > 0
+      ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+      : `${m}:${String(sec).padStart(2,'0')}`;
+  }
+
+  function fmtMin(s) {
+    s = Math.round(s);
+    if (s < 60) return s + ' seg';
+    const m = Math.floor(s / 60);
+    return m < 60 ? m + ' min' : Math.floor(m/60) + 'h ' + (m%60) + 'min';
+  }
+
+  // ===== HEATMAP =====
+  function buildHeatmap() {
+    heatmapBar.innerHTML = '';
+    for (let i = 0; i < SEGMENTS; i++) {
+      const seg = document.createElement('div');
+      seg.className = 'heatmap-segment';
+      seg.style.flex = '1';
+      heatmapBar.appendChild(seg);
+    }
+    updateHeatmapColors();
+  }
+
+  function updateHeatmapColors() {
+    const segs = heatmapBar.children;
+    const maxCount = Math.max(1, ...segmentWatchCount);
+    for (let i = 0; i < SEGMENTS; i++) {
+      const ratio = segmentWatchCount[i] / maxCount;
+      if (segmentWatchCount[i] === 0) segs[i].style.background = '#1a2223';
+      else if (ratio < 0.25) segs[i].style.background = '#1a3a40';
+      else if (ratio < 0.5) segs[i].style.background = '#1e7e86';
+      else if (ratio < 0.75) segs[i].style.background = '#27abb6';
+      else segs[i].style.background = '#6edbe4';
+    }
+  }
+
+  function getSegmentIndex(time) {
+    const duration = vid.duration || 1;
+    return Math.min(SEGMENTS - 1, Math.floor((time / duration) * SEGMENTS));
+  }
+
+  buildHeatmap();
+
+  // ===== SCRUBBER INTERACTION =====
+  let isScrubbing = false;
+
+  function scrubTo(e) {
+    const rect = scrubberWrap.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (vid.duration) vid.currentTime = pct * vid.duration;
+  }
+
+  scrubberWrap.addEventListener('mousedown', (e) => {
+    isScrubbing = true;
+    scrubTo(e);
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (isScrubbing) scrubTo(e);
+    // Tooltip
+    const rect = scrubberWrap.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    scrubberTooltip.textContent = fmt(pct * (vid.duration || 0));
+    scrubberTooltip.style.left = (pct * 100) + '%';
+  });
+  document.addEventListener('mouseup', () => { isScrubbing = false; });
+
+  // ===== PLAY / PAUSE =====
+  const iconPlay = document.getElementById('iconPlay');
+  const iconPause = document.getElementById('iconPause');
+
+  function togglePlay() {
+    if (vid.paused) vid.play();
+    else vid.pause();
+  }
+
+  document.getElementById('videoArea').addEventListener('click', (e) => {
+    if (e.target.closest('.tab-away-overlay')) return;
+    togglePlay();
+  });
+  bigPlay.addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
+  document.getElementById('btnPlayPause').addEventListener('click', togglePlay);
+
+  vid.addEventListener('play', () => {
+    isPlaying = true;
+    lastTickTime = Date.now();
+    bigPlay.classList.add('hidden');
+    iconPlay.style.display = 'none';
+    iconPause.style.display = 'block';
+  });
+
+  vid.addEventListener('pause', () => {
+    flushTick();
+    isPlaying = false;
+    iconPlay.style.display = 'block';
+    iconPause.style.display = 'none';
+    syncToServer();
+  });
+
+  vid.addEventListener('ended', () => {
+    flushTick();
+    isPlaying = false;
+    completed = true;
+    iconPlay.style.display = 'block';
+    iconPause.style.display = 'none';
+    bigPlay.classList.remove('hidden');
+    syncToServer(true);
+  });
+
+  // ===== SKIP DETECTION =====
+  vid.addEventListener('seeking', () => {
+    const diff = vid.currentTime - lastTimeUpdate;
+    if (diff > 5) {
+      forwardSkips++;
+    } else if (diff < -3) {
+      rewatchCount++;
+    }
+  });
+
+  // ===== TIMEUPDATE — core tracking =====
+  vid.addEventListener('timeupdate', () => {
+    const ct = vid.currentTime;
+    const dur = vid.duration || 0;
+
+    // Mark segment as watched
+    const seg = getSegmentIndex(ct);
+    segmentWatchCount[seg]++;
+
+    // Farthest point
+    if (ct > farthestPoint) farthestPoint = ct;
+
+    lastTimeUpdate = ct;
+    updateUI();
+  });
+
+  // ===== ACCUMULATE REAL WATCH TIME =====
+  function flushTick() {
+    if (isPlaying && lastTickTime > 0) {
+      const delta = (Date.now() - lastTickTime) / 1000;
+      totalRealSeconds += Math.min(delta, 35); // cap at 35s to prevent anomalies
+      lastTickTime = Date.now();
+    }
+  }
+
+  // Tick every 5s
+  setInterval(() => {
+    if (isPlaying) {
+      flushTick();
+      updateUI();
+    }
+    // Sync every 30s
+    if (Date.now() - lastSyncTime > 30000 && totalRealSeconds > 0) {
+      syncToServer();
+    }
+  }, 5000);
+
+  // ===== TAB VISIBILITY — pause on tab away =====
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      tabBlurStart = Date.now();
+      if (isPlaying) {
+        flushTick();
+        vid.pause();
+        document.getElementById('tabAwayOverlay').classList.add('show');
+      }
+    } else {
+      if (tabBlurStart > 0) {
+        tabBlurTotal += Date.now() - tabBlurStart;
+        tabBlurStart = 0;
+      }
+    }
+  });
+
+  function resumeFromTab() {
+    document.getElementById('tabAwayOverlay').classList.remove('show');
+    vid.play();
+  }
+
+  // ===== SPEED CONTROL =====
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  let speedIdx = 2;
+
+  function cycleSpeed() {
+    speedIdx = (speedIdx + 1) % speeds.length;
+    currentSpeed = speeds[speedIdx];
+    vid.playbackRate = currentSpeed;
+    document.getElementById('btnSpeed').textContent = currentSpeed + 'x';
+  }
+
+  // ===== VOLUME =====
+  function toggleMute() {
+    vid.muted = !vid.muted;
+    document.getElementById('volSlider').value = vid.muted ? 0 : vid.volume;
+  }
+
+  // ===== FULLSCREEN =====
+  function toggleFS() {
+    const pc = document.getElementById('playerContainer');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else pc.requestFullscreen();
+  }
+
+  // ===== UPDATE UI =====
+  function updateUI() {
+    const ct = vid.currentTime || 0;
+    const dur = vid.duration || 0;
+    const pct = dur > 0 ? (ct / dur) : 0;
+
+    // Scrubber
+    scrubberPlayed.style.width = (pct * 100) + '%';
+    scrubberThumb.style.left = (pct * 100) + '%';
+    document.getElementById('ctrlTime').textContent = `${fmt(ct)} / ${fmt(dur)}`;
+
+    // Heatmap
+    updateHeatmapColors();
+
+    // Compute unique coverage: % of segments watched at least once
+    const watchedSegments = segmentWatchCount.filter(c => c > 0).length;
+    const coveragePct = dur > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
+
+    // Engagement ring
+    const circumference = 314.16;
+    document.getElementById('ringFill').style.strokeDashoffset = circumference - (circumference * coveragePct / 100);
+    document.getElementById('ringText').textContent = coveragePct + '%';
+
+    // Ring description
+    if (coveragePct >= 90) {
+      document.getElementById('engTitle').textContent = '🎉 Aula Concluída!';
+      document.getElementById('engDesc').textContent = 'Parabéns! Você assistiu a aula praticamente toda. Seu comprometimento vai fazer toda a diferença.';
+      document.getElementById('aCompletionCard').style.display = 'block';
+      completed = true;
+    } else if (coveragePct >= 50) {
+      document.getElementById('engTitle').textContent = '🔥 Bom Progresso!';
+      document.getElementById('engDesc').textContent = 'Você já assistiu mais da metade! Continue para absorver todo o conteúdo.';
+    } else if (coveragePct > 0) {
+      document.getElementById('engTitle').textContent = '📺 Assistindo...';
+      document.getElementById('engDesc').textContent = 'Continue assistindo para completar a aula. Cada minuto conta!';
+    }
+
+    // Ring details
+    const totalPageTime = (Date.now() - pageStartTime) / 1000;
+    const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
+    document.getElementById('detailRealTime').textContent = '⏱ Real: ' + fmtMin(totalRealSeconds);
+    document.getElementById('detailSessions').textContent = '🔄 Sessões: ' + sessionCount;
+    document.getElementById('detailSpeed').textContent = '⚡ Velocidade: ' + currentSpeed + 'x';
+    document.getElementById('detailTab').textContent = '👁 Foco: ' + focusPct + '%';
+
+    // Analytics cards
+    document.getElementById('aRealTime').textContent = fmt(totalRealSeconds);
+    document.getElementById('aFarthest').textContent = fmt(farthestPoint);
+    document.getElementById('aRewatches').textContent = rewatchCount;
+    document.getElementById('aSkips').textContent = forwardSkips;
+  }
+
+  // ===== SYNC TO SERVER =====
+  async function syncToServer(final = false) {
+    lastSyncTime = Date.now();
+    if (!token) return;
+
+    const watchedSegments = segmentWatchCount.filter(c => c > 0).length;
+    const coveragePct = (vid.duration || 0) > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
+    const totalPageTime = (Date.now() - pageStartTime) / 1000;
+    const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
+
+    const payload = {
+      totalWatchedSeconds: Math.round(totalRealSeconds),
+      currentTime: Math.round(vid.currentTime || 0),
+      duration: Math.round(vid.duration || 0),
+      percentWatched: coveragePct,
+      completed: final || coveragePct >= 90,
+      farthestPoint: Math.round(farthestPoint),
+      forwardSkips,
+      rewatchCount,
+      playbackSpeed: currentSpeed,
+      focusPercent: focusPct,
+      segmentData: segmentWatchCount
+    };
+
+    try {
+      await fetch(API_URL + '/api/analytics/watch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) { /* silent */ }
+  }
+
+  // ===== BEACON ON UNLOAD =====
+  window.addEventListener('beforeunload', () => {
+    flushTick();
+    const watchedSegments = segmentWatchCount.filter(c => c > 0).length;
+    const coveragePct = (vid.duration || 0) > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
+    const totalPageTime = (Date.now() - pageStartTime) / 1000;
+    const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
+
+    const payload = JSON.stringify({
+      totalWatchedSeconds: Math.round(totalRealSeconds),
+      currentTime: Math.round(vid.currentTime || 0),
+      duration: Math.round(vid.duration || 0),
+      percentWatched: coveragePct,
+      completed: coveragePct >= 90,
+      farthestPoint: Math.round(farthestPoint),
+      forwardSkips,
+      rewatchCount,
+      playbackSpeed: currentSpeed,
+      focusPercent: focusPct,
+      segmentData: segmentWatchCount
+    });
+
+    navigator.sendBeacon(
+      API_URL + '/api/analytics/watch-beacon?token=' + encodeURIComponent(token),
+      new Blob([payload], { type: 'application/json' })
+    );
+  });
+
+  // ===== KEYBOARD SHORTCUTS =====
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+    switch (e.key) {
+      case ' ': case 'k': e.preventDefault(); togglePlay(); break;
+      case 'ArrowLeft': vid.currentTime = Math.max(0, vid.currentTime - 10); break;
+      case 'ArrowRight': vid.currentTime = Math.min(vid.duration || 0, vid.currentTime + 10); break;
+      case 'f': toggleFS(); break;
+      case 'm': toggleMute(); break;
+    }
+  });
+
+  // ===== NOTES AUTO-SAVE =====
+  const notesArea = document.getElementById('notesArea');
+  const notesSaved = document.getElementById('notesSaved');
+  let notesTimeout = null;
+  const savedNotes = localStorage.getItem('up_notes_' + (user?.id || ''));
+  if (savedNotes) notesArea.value = savedNotes;
+
+  notesArea.addEventListener('input', () => {
+    clearTimeout(notesTimeout);
+    notesTimeout = setTimeout(() => {
+      localStorage.setItem('up_notes_' + (user?.id || ''), notesArea.value);
+      notesSaved.classList.add('show');
+      setTimeout(() => notesSaved.classList.remove('show'), 2000);
+    }, 500);
+  });
+
+  // ===== LOAD PREVIOUS SESSION =====
+  (async function loadWatchData() {
+    try {
+      const res = await fetch(API_URL + '/api/analytics/my-watch', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.totalWatchedSeconds) totalRealSeconds = data.totalWatchedSeconds;
+        if (data.farthestPoint) farthestPoint = data.farthestPoint;
+        if (data.forwardSkips) forwardSkips = data.forwardSkips;
+        if (data.rewatchCount) rewatchCount = data.rewatchCount;
+        if (data.sessions) sessionCount = data.sessions + 1;
+        if (data.segmentData && Array.isArray(data.segmentData) && data.segmentData.length === SEGMENTS) {
+          segmentWatchCount = data.segmentData;
+        }
+        updateUI();
+      }
+    } catch (e) { /* silent */ }
+  })();
+  </script>
+</body>
+</html>

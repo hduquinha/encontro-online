@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Encontro UP Online | Construindo Uma Vida Mais Leve</title>
+  <meta name="description" content="Assista ao Encontro de Inteligência Emocional online com Rodrigo Damaceno. Aprenda a controlar ansiedade, melhorar relacionamentos e construir uma vida mais leve." />
+  <link rel="icon" href="img/up.png" />
+  <link rel="apple-touch-icon" href="img/up.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Encontro UP Online | Construindo Uma Vida Mais Leve" />
+  <meta property="og:description" content="Assista ao Encontro de Inteligência Emocional online. Dinâmica de alto impacto e exercício guiado para controlar a ansiedade." />
+  <meta property="og:image" content="https://instituto-up-formulario.vercel.app/img/up.png" />
+  <meta name="theme-color" content="#0a0a14" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #27abb6;
+      --primary-rgb: 39,171,182;
+      --bg: #000000;
+      --text: #ffffff;
+      --muted: #d1d5d8;
+      --card: #101414;
+      --card-border: #1e2627;
+      --danger: #ff5656;
+    }
+
+    * { box-sizing: border-box; -webkit-font-smoothing: antialiased; margin: 0; padding: 0; }
+    html { font-size: 18px; }
+    @media (max-width:900px) { html { font-size: 17px; } }
+    @media (max-width:600px) { html { font-size: 16px; } }
+
+    body {
+      font-family: 'Montserrat', system-ui, sans-serif;
+      color: var(--text);
+      background: linear-gradient(145deg, #000000, #061112 55%, #082024);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    /* ===== NAV ===== */
+    .nav { padding: 16px 0; border-bottom: 1px solid #1e2627; }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { font-size: 1.2rem; font-weight: 800; color: var(--primary); letter-spacing: -0.5px; text-decoration: none; }
+    .nav-logo span { color: #fff; font-weight: 600; }
+
+    /* ===== HERO ===== */
+    .hero { padding: 60px 0 40px; text-align: center; }
+    .hero-badge { display: inline-block; background: rgba(var(--primary-rgb), .08); border: 1px solid #1d3f43; padding: 8px 18px; border-radius: 40px; font-size: .72rem; font-weight: 600; letter-spacing: .7px; color: #9bd5da; text-transform: uppercase; margin-bottom: 20px; }
+    .hero h1 { font-size: clamp(2rem, 4vw, 3rem); color: var(--primary); line-height: 1.1; letter-spacing: -.5px; text-shadow: 0 3px 14px rgba(var(--primary-rgb), .28); margin-bottom: 12px; }
+    .hero h1 .white { color: #fff; }
+    .hero-sub { color: var(--muted); font-size: clamp(.95rem, 1.5vw, 1.15rem); max-width: 680px; margin: 0 auto 36px; }
+
+    /* ===== VIDEO PREVIEW ===== */
+    .video-preview { position: relative; max-width: 780px; margin: 0 auto 48px; border-radius: 22px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); aspect-ratio: 16/9; background: #0a1415; cursor: pointer; }
+    .video-preview img { width: 100%; height: 100%; object-fit: cover; opacity: .6; }
+    .play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 80px; height: 80px; background: rgba(var(--primary-rgb), .9); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(var(--primary-rgb), .5); transition: .3s; }
+    .play-btn:hover { transform: translate(-50%,-50%) scale(1.1); }
+    .play-btn svg { width: 32px; height: 32px; fill: #fff; margin-left: 4px; }
+    .video-lock { position: absolute; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; backdrop-filter: blur(4px); }
+    .video-lock-text { font-size: .9rem; font-weight: 600; color: #b8dadd; }
+
+    /* ===== BENEFITS GRID ===== */
+    .benefits-section { padding: 20px 0 48px; }
+    .benefits-section h2 { text-align: center; color: var(--primary); font-size: clamp(1.4rem, 2.5vw, 1.9rem); margin-bottom: 28px; }
+    .benefits-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .benefit-card { background: #0f1819; border: 1px solid #1f3335; padding: 22px 20px; border-radius: 18px; position: relative; padding-left: 56px; }
+    .benefit-card::before { content: attr(data-icon); position: absolute; left: 18px; top: 22px; font-size: 1.4rem; }
+    .benefit-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: 6px; color: #fff; }
+    .benefit-card p { font-size: .82rem; color: #9fb8bb; line-height: 1.45; }
+
+    /* ===== MENTOR ===== */
+    .mentor-section { padding: 20px 0 48px; }
+    .mentor-card { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center; background: #0f1819; border: 1px solid #1f3335; border-radius: 22px; padding: 28px; max-width: 700px; margin: 0 auto; }
+    .mentor-avatar { width: 120px; height: 120px; border-radius: 16px; background: #132628; border: 2px solid #1e3336; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; overflow: hidden; }
+    .mentor-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .mentor-info h3 { color: var(--primary); font-size: 1.15rem; margin-bottom: 4px; }
+    .mentor-info .role { font-size: .78rem; color: #7fa6aa; letter-spacing: .4px; margin-bottom: 10px; }
+    .mentor-info p { font-size: .85rem; color: #b7dfe4; line-height: 1.5; }
+    @media (max-width: 600px) { .mentor-card { grid-template-columns: 1fr; text-align: center; } .mentor-avatar { margin: 0 auto; } }
+
+    /* ===== ACCESS SECTION ===== */
+    .access-section { padding: 40px 0 60px; }
+    .access-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 22px; padding: 36px 32px; max-width: 480px; margin: 0 auto; box-shadow: 0 8px 40px -6px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03); position: relative; overflow: hidden; }
+    .access-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 88% 12%, rgba(var(--primary-rgb), .22), transparent 60%); }
+    .access-card h2 { text-align: center; font-size: 1.15rem; letter-spacing: .8px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .access-card .access-sub { text-align: center; font-size: .78rem; color: #7fa6aa; margin-bottom: 24px; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; position: relative; }
+    .field label { font-size: .88rem; color: var(--text); font-weight: 600; letter-spacing: .3px; }
+    .field input { background: #0b1213; color: var(--text); border: 2px solid #1c2a2c; border-radius: 14px; padding: 14px 16px; outline: none; font-size: .95rem; font-weight: 500; transition: .25s; font-family: inherit; }
+    .field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(var(--primary-rgb), .55); }
+    .field input::placeholder { color: #6d7e80; font-weight: 400; }
+    .field .error-msg { color: var(--danger); font-size: .72rem; min-height: 0; letter-spacing: .4px; display: none; }
+    .field.has-error .error-msg { display: block; }
+    .field.has-error input { border-color: var(--danger); }
+
+    .toggle-pw { position: absolute; right: 14px; top: 38px; background: none; border: none; color: #7fa6aa; cursor: pointer; font-size: .75rem; font-weight: 600; font-family: inherit; padding: 6px; }
+    .toggle-pw:hover { color: var(--primary); }
+
+    .btn-access { width: 100%; appearance: none; background: var(--primary); border: 2px solid var(--primary); color: #002b30; padding: 16px; border-radius: 14px; cursor: pointer; font-weight: 800; letter-spacing: .5px; font-size: 1rem; font-family: inherit; transition: .25s; text-shadow: 0 1px 0 rgba(255,255,255,.25); margin-top: 8px; }
+    .btn-access:hover { background: #1e919b; border-color: #1e919b; color: #e6feff; }
+    .btn-access:disabled { opacity: .5; cursor: not-allowed; }
+
+    .form-status { text-align: center; font-size: .78rem; color: var(--muted); margin-top: 12px; min-height: 20px; }
+    .form-status.error { color: var(--danger); }
+    .form-status.success { color: #22e386; }
+
+    .register-toggle { text-align: center; margin-top: 16px; font-size: .78rem; color: #7fa6aa; }
+    .register-toggle a { color: var(--primary); cursor: pointer; text-decoration: underline; font-weight: 600; }
+    .register-toggle a:hover { color: #6edbe4; }
+
+    /* ===== TESTIMONIALS ===== */
+    .testimonials { padding: 20px 0 48px; }
+    .testimonials h2 { text-align: center; color: var(--primary); font-size: clamp(1.3rem, 2.3vw, 1.7rem); margin-bottom: 24px; }
+    .testimonial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    .testimonial-card { background: #0f1819; border: 1px solid #1f3335; padding: 20px; border-radius: 16px; }
+    .testimonial-card .stars { color: #f5c518; font-size: .85rem; margin-bottom: 8px; letter-spacing: 2px; }
+    .testimonial-card p { font-size: .82rem; color: #b7dfe4; line-height: 1.5; font-style: italic; margin-bottom: 10px; }
+    .testimonial-card .author { font-size: .72rem; color: #7fa6aa; font-weight: 600; }
+
+    /* ===== FAQ ===== */
+    .faq { padding: 20px 0 48px; }
+    .faq h2 { text-align: center; color: var(--primary); font-size: clamp(1.3rem, 2.3vw, 1.7rem); margin-bottom: 24px; }
+    .faq-item { background: #0f1819; border: 1px solid #1f3335; border-radius: 16px; margin-bottom: 10px; overflow: hidden; }
+    .faq-q { padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: .9rem; }
+    .faq-q::after { content: '+'; font-size: 1.2rem; color: var(--primary); transition: .3s; }
+    .faq-item.open .faq-q::after { content: '−'; }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+    .faq-a-inner { padding: 0 20px 16px; font-size: .82rem; color: #9fb8bb; line-height: 1.55; }
+    .faq-item.open .faq-a { max-height: 300px; }
+
+    /* ===== FOOTER ===== */
+    footer { text-align: center; color: var(--muted); font-size: .68rem; padding: 24px 0 48px; letter-spacing: .5px; border-top: 1px solid #1e2627; }
+
+    /* ===== WHATSAPP FLOAT ===== */
+    .whatsapp-float { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(37,211,102,.4); cursor: pointer; z-index: 1000; text-decoration: none; animation: pulse 2s infinite; }
+    .whatsapp-float svg { width: 32px; height: 32px; fill: #fff; }
+    @keyframes pulse {
+      0% { box-shadow: 0 4px 16px rgba(37,211,102,.4), 0 0 0 0 rgba(37,211,102,.7); }
+      70% { box-shadow: 0 4px 16px rgba(37,211,102,.4), 0 0 0 10px rgba(37,211,102,0); }
+      100% { box-shadow: 0 4px 16px rgba(37,211,102,.4), 0 0 0 0 rgba(37,211,102,0); }
+    }
+    @media (max-width:600px) { .whatsapp-float { bottom: 88px; right: 15px; width: 55px; height: 55px; } .whatsapp-float svg { width: 28px; height: 28px; } }
+
+    /* ===== SCROLL SMOOTH ===== */
+    html { scroll-behavior: smooth; }
+
+    /* ===== ANIMATIONS ===== */
+    .fade-in { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="#" class="nav-logo">Encontro <span>UP</span></a>
+      <a href="#acesso" class="btn-access" style="width:auto;padding:10px 20px;font-size:.8rem;margin:0;">Acessar Aula</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">🎓 Encontro Online Disponível</div>
+      <h1>Encontro UP<br><span class="white">Construindo Uma Vida Mais Leve</span></h1>
+      <p class="hero-sub">Assista ao encontro completo de <strong>Inteligência Emocional</strong> com dinâmica de alto impacto e exercício guiado para controlar a ansiedade. Conduzido por <strong>Rodrigo Damaceno</strong>.</p>
+
+      <!-- Video Preview -->
+      <div class="video-preview" id="videoPreview" onclick="document.getElementById('acesso').scrollIntoView({behavior:'smooth'})">
+        <div style="width:100%;height:100%;background:linear-gradient(135deg,#0a1a1c,#0f2a2e);display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;">
+            <div style="font-size:3rem;margin-bottom:8px;">🧠</div>
+            <div style="font-size:1.1rem;font-weight:700;color:var(--primary);">Encontro UP Online</div>
+            <div style="font-size:.78rem;color:#7fa6aa;margin-top:4px;">Inteligência Emocional na Prática</div>
+          </div>
+        </div>
+        <div class="video-lock">
+          <div class="play-btn">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <span class="video-lock-text">🔒 Faça login para assistir</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENEFITS -->
+  <section class="benefits-section fade-in">
+    <div class="container">
+      <h2>O que você vai aprender</h2>
+      <div class="benefits-grid">
+        <div class="benefit-card" data-icon="🧘">
+          <h3>Controle da Ansiedade</h3>
+          <p>Técnicas práticas e exercícios guiados para reduzir a ansiedade no dia a dia.</p>
+        </div>
+        <div class="benefit-card" data-icon="😴">
+          <h3>Qualidade do Sono</h3>
+          <p>Estratégias para melhorar seu sono e acordar com mais disposição.</p>
+        </div>
+        <div class="benefit-card" data-icon="💬">
+          <h3>Comunicação Assertiva</h3>
+          <p>Aprenda a se comunicar melhor e construir relacionamentos mais saudáveis.</p>
+        </div>
+        <div class="benefit-card" data-icon="💪">
+          <h3>Saúde Emocional</h3>
+          <p>Ferramentas para fortalecer sua inteligência emocional e viver mais leve.</p>
+        </div>
+        <div class="benefit-card" data-icon="❤️">
+          <h3>Relacionamentos</h3>
+          <p>Melhore suas relações familiares, amorosas e profissionais.</p>
+        </div>
+        <div class="benefit-card" data-icon="🎯">
+          <h3>Foco e Produtividade</h3>
+          <p>Reduza o estresse e aumente sua capacidade de concentração.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENTOR -->
+  <section class="mentor-section fade-in">
+    <div class="container">
+      <div class="mentor-card">
+        <div class="mentor-avatar">
+          <img src="img/up.png" alt="Rodrigo Damaceno" onerror="this.style.display='none';this.parentElement.textContent='👨‍🏫';" />
+        </div>
+        <div class="mentor-info">
+          <h3>Rodrigo Damaceno</h3>
+          <div class="role">Especialista em Inteligência Emocional</div>
+          <p>Facilitador de encontros transformadores, ajudando pessoas a construírem uma vida mais leve através do autoconhecimento e controle emocional.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="testimonials fade-in">
+    <div class="container">
+      <h2>O que dizem os participantes</h2>
+      <div class="testimonial-grid">
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"Mudou completamente minha forma de lidar com a ansiedade. Exercícios práticos que uso todos os dias."</p>
+          <div class="author">— Maria S.</div>
+        </div>
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"O Rodrigo tem uma didática incrível. Saí do encontro com ferramentas que realmente funcionam."</p>
+          <div class="author">— Carlos R.</div>
+        </div>
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"Meus relacionamentos melhoraram muito depois que apliquei o que aprendi. Recomendo demais!"</p>
+          <div class="author">— Ana P.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACCESS / LOGIN -->
+  <section class="access-section" id="acesso">
+    <div class="container">
+      <div class="access-card">
+        <!-- Tab: Login -->
+        <div id="loginForm">
+          <h2>🔓 Acesse a Aula</h2>
+          <p class="access-sub">Entre com seus dados para assistir o encontro completo</p>
+          <form id="formLogin" autocomplete="off" novalidate>
+            <div class="field">
+              <label for="loginPhone">Telefone</label>
+              <input type="tel" id="loginPhone" placeholder="(11) 99999-9999" required maxlength="15" />
+              <span class="error-msg">Informe seu telefone</span>
+            </div>
+            <div class="field">
+              <label for="loginPassword">Senha</label>
+              <input type="password" id="loginPassword" placeholder="Sua senha de acesso" required minlength="4" />
+              <button type="button" class="toggle-pw" onclick="togglePw('loginPassword', this)">mostrar</button>
+              <span class="error-msg">Informe sua senha</span>
+            </div>
+            <button type="submit" class="btn-access" id="btnLogin">Entrar e Assistir</button>
+            <div class="form-status" id="loginStatus"></div>
+          </form>
+          <div class="register-toggle">Ainda não tem acesso? <a onclick="showTab('register')">Cadastre-se grátis</a></div>
+        </div>
+
+        <!-- Tab: Register -->
+        <div id="registerForm" style="display:none;">
+          <h2>📝 Criar Acesso Gratuito</h2>
+          <p class="access-sub">Cadastre-se para assistir o encontro completo</p>
+          <form id="formRegister" autocomplete="off" novalidate>
+            <div class="field">
+              <label for="regName">Nome Completo</label>
+              <input type="text" id="regName" placeholder="Seu nome completo" required />
+              <span class="error-msg">Informe seu nome completo (nome e sobrenome)</span>
+            </div>
+            <div class="field">
+              <label for="regPhone">Telefone</label>
+              <input type="tel" id="regPhone" placeholder="(11) 99999-9999" required maxlength="15" />
+              <span class="error-msg">Informe seu telefone</span>
+            </div>
+            <div class="field">
+              <label for="regPassword">Crie uma Senha</label>
+              <input type="password" id="regPassword" placeholder="Mínimo 4 caracteres" required minlength="4" />
+              <button type="button" class="toggle-pw" onclick="togglePw('regPassword', this)">mostrar</button>
+              <span class="error-msg">Crie uma senha com no mínimo 4 caracteres</span>
+            </div>
+            <div class="field">
+              <label for="regPasswordConfirm">Confirme a Senha</label>
+              <input type="password" id="regPasswordConfirm" placeholder="Repita a senha" required minlength="4" />
+              <span class="error-msg">As senhas não conferem</span>
+            </div>
+            <button type="submit" class="btn-access" id="btnRegister">Criar Conta e Assistir</button>
+            <div class="form-status" id="registerStatus"></div>
+          </form>
+          <div class="register-toggle">Já tem acesso? <a onclick="showTab('login')">Faça login</a></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq fade-in">
+    <div class="container">
+      <h2>Perguntas Frequentes</h2>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">O encontro é realmente gratuito?</div>
+        <div class="faq-a"><div class="faq-a-inner">Sim! O acesso ao encontro online é totalmente gratuito. Basta criar sua conta com nome, telefone e senha.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Posso assistir mais de uma vez?</div>
+        <div class="faq-a"><div class="faq-a-inner">Sim, você pode assistir quantas vezes quiser. Basta fazer login com seus dados de acesso.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Quanto tempo dura o encontro?</div>
+        <div class="faq-a"><div class="faq-a-inner">O encontro tem aproximadamente 2 horas e 30 minutos de conteúdo prático e transformador.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Funciona no celular?</div>
+        <div class="faq-a"><div class="faq-a-inner">Sim! A plataforma é totalmente responsiva e funciona em qualquer dispositivo — celular, tablet ou computador.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Preciso baixar alguma coisa?</div>
+        <div class="faq-a"><div class="faq-a-inner">Não. Tudo funciona direto no navegador, sem necessidade de instalar nada.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <p>© 2026 Instituto UP — Todos os direitos reservados.</p>
+      <p style="margin-top:4px;">Encontro UP | Construindo Uma Vida Mais Leve</p>
+    </div>
+  </footer>
+
+  <!-- WHATSAPP -->
+  <a href="https://wa.me/5511999999999" target="_blank" rel="noopener" class="whatsapp-float" aria-label="Falar no WhatsApp">
+    <svg viewBox="0 0 32 32"><path d="M16.004 0h-.008C7.174 0 0 7.176 0 16.004c0 3.5 1.132 6.744 3.058 9.374L1.058 32l6.834-2.07A15.91 15.91 0 0016.004 32C24.826 32 32 24.826 32 16.004 32 7.176 24.826 0 16.004 0zm9.31 22.602c-.39 1.1-2.274 2.038-3.146 2.112-.796.066-1.792.094-2.894-.182a26.3 26.3 0 01-2.624-.97c-4.622-1.994-7.64-6.672-7.872-6.984-.232-.312-1.894-2.518-1.894-4.802 0-2.284 1.198-3.41 1.624-3.874.39-.426 .91-.576 1.198-.576.154 0 .31.008.44.014.39.018.586.042.844.652.322.762 1.108 2.70 1.204 2.898.098.198.164.43.032.692-.13.264-.196.428-.392.66-.196.232-.412.518-.588.696-.196.196-.4.408-.172.8.228.392 1.014 1.672 2.178 2.71 1.496 1.336 2.756 1.75 3.148 1.946.392.196.62.164.848-.098.228-.264.98-1.14 1.242-1.532.26-.392.522-.326.878-.196.358.13 2.274 1.072 2.664 1.268.392.196.652.294.748.458.098.164.098.95-.292 2.050z"/></svg>
+  </a>
+
+  <script src="config.js"></script>
+  <script>
+    const API_URL = window.FORM_CONFIG?.ONLINE_SERVER_URL || 'http://localhost:5175';
+  </script>
+
+  <!-- MAIN SCRIPT -->
+  <script>
+    // ===== PHONE MASK =====
+    function phoneMask(input) {
+      input.addEventListener('input', () => {
+        let v = input.value.replace(/\D/g, '').slice(0, 11);
+        if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+        else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+        else if (v.length > 0) v = `(${v}`;
+        input.value = v;
+      });
+    }
+    phoneMask(document.getElementById('loginPhone'));
+    phoneMask(document.getElementById('regPhone'));
+
+    // ===== TOGGLE PASSWORD =====
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'ocultar' : 'mostrar';
+    }
+
+    // ===== TAB SWITCH =====
+    function showTab(tab) {
+      document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+    }
+
+    // ===== VALIDATION =====
+    function validateField(input) {
+      const field = input.closest('.field');
+      let valid = true;
+      if (input.required && !input.value.trim()) valid = false;
+      if (input.type === 'tel' && input.value.replace(/\D/g, '').length < 10) valid = false;
+      if (input.minLength > 0 && input.value.length < input.minLength) valid = false;
+      if (input.id === 'regName' && input.value.trim().split(/\s+/).length < 2) valid = false;
+      field.classList.toggle('has-error', !valid);
+      return valid;
+    }
+
+    // ===== REGISTER =====
+    document.getElementById('formRegister').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('regName');
+      const phone = document.getElementById('regPhone');
+      const pw = document.getElementById('regPassword');
+      const pwC = document.getElementById('regPasswordConfirm');
+      const status = document.getElementById('registerStatus');
+      const btn = document.getElementById('btnRegister');
+
+      let valid = true;
+      [name, phone, pw, pwC].forEach(i => { if (!validateField(i)) valid = false; });
+
+      if (pw.value !== pwC.value) {
+        pwC.closest('.field').classList.add('has-error');
+        valid = false;
+      }
+
+      if (!valid) return;
+
+      btn.disabled = true;
+      status.className = 'form-status';
+      status.textContent = 'Criando sua conta...';
+
+      try {
+        const res = await fetch(API_URL + '/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.value.trim(),
+            phone: phone.value.replace(/\D/g, ''),
+            password: pw.value
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro ao criar conta');
+
+        localStorage.setItem('up_token', data.token);
+        localStorage.setItem('up_user', JSON.stringify(data.user));
+        status.className = 'form-status success';
+        status.textContent = 'Conta criada! Redirecionando...';
+        setTimeout(() => { window.location.href = 'aula.html'; }, 800);
+      } catch (err) {
+        status.className = 'form-status error';
+        status.textContent = err.message;
+        btn.disabled = false;
+      }
+    });
+
+    // ===== LOGIN =====
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const phone = document.getElementById('loginPhone');
+      const pw = document.getElementById('loginPassword');
+      const status = document.getElementById('loginStatus');
+      const btn = document.getElementById('btnLogin');
+
+      let valid = true;
+      [phone, pw].forEach(i => { if (!validateField(i)) valid = false; });
+      if (!valid) return;
+
+      btn.disabled = true;
+      status.className = 'form-status';
+      status.textContent = 'Verificando...';
+
+      try {
+        const res = await fetch(API_URL + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: phone.value.replace(/\D/g, ''),
+            password: pw.value
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Telefone ou senha incorretos');
+
+        localStorage.setItem('up_token', data.token);
+        localStorage.setItem('up_user', JSON.stringify(data.user));
+        status.className = 'form-status success';
+        status.textContent = 'Login realizado! Redirecionando...';
+        setTimeout(() => { window.location.href = 'aula.html'; }, 800);
+      } catch (err) {
+        status.className = 'form-status error';
+        status.textContent = err.message;
+        btn.disabled = false;
+      }
+    });
+
+    // ===== AUTO-LOGIN CHECK =====
+    (function() {
+      const token = localStorage.getItem('up_token');
+      if (token) {
+        window.location.href = 'aula.html';
+      }
+    })();
+
+    // ===== SCROLL ANIMATIONS =====
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "id": "37be8811-e53e-48ad-b0aa-c4ccef61bab9",
+      "name": "Teste Usuario",
+      "phone": "11999998888",
+      "passwordHash": "7469c2c30f689c71f304d45e42922941:aad61eb08ecdf48d4036c2f75849cdb4830c89ec6e44606bffc333f781933c4cd2ea93fdbb7afa684a9594a7e27b1f72e0d23f7c30a3c443b71d22851a82fa4d",
+      "registeredAt": "2026-03-10T20:07:36.285Z"
+    }
+  ],
+  "watchData": []
+}

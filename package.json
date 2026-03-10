@@ -1,0 +1,9 @@
+{
+  "name": "encontro-up-online",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node dev-server.js",
+    "server": "cd server && node online.js"
+  }
+}

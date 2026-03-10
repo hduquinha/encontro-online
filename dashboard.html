@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | Encontro UP Online</title>
+  <link rel="icon" href="img/up.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #27abb6;
+      --primary-rgb: 39,171,182;
+      --bg: #000000;
+      --text: #ffffff;
+      --muted: #d1d5d8;
+      --card: #101414;
+      --card-border: #1e2627;
+      --danger: #ff5656;
+      --success: #22e386;
+      --warning: #f5c518;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Montserrat', system-ui, sans-serif;
+      color: var(--text);
+      background: linear-gradient(145deg, #000000, #061112 55%, #082024);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* NAV */
+    .nav { padding: 14px 0; border-bottom: 1px solid #1e2627; background: rgba(0,0,0,.5); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
+    .nav-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { font-size: 1.1rem; font-weight: 800; color: var(--primary); text-decoration: none; }
+    .nav-logo span { color: #fff; font-weight: 600; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .btn-refresh { background: #173337; border: 1px solid #1f4d52; color: #b8dadd; padding: 8px 14px; border-radius: 10px; font-size: .72rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-refresh:hover { background: #1d4045; color: #fff; }
+    .btn-back { background: none; border: 1px solid #1f4d52; color: #7fa6aa; padding: 8px 14px; border-radius: 10px; font-size: .72rem; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; }
+    .btn-back:hover { color: #fff; border-color: var(--primary); }
+
+    /* MAIN */
+    .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    /* HEADER */
+    .dash-header { margin-bottom: 28px; }
+    .dash-header h1 { font-size: 1.5rem; color: var(--primary); margin-bottom: 4px; }
+    .dash-header p { font-size: .82rem; color: #7fa6aa; }
+    .last-updated { font-size: .68rem; color: #556b6e; margin-top: 4px; }
+
+    /* STAT CARDS */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .stat-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; padding: 20px; position: relative; overflow: hidden; }
+    .stat-card::before { content: ""; position: absolute; top: 0; right: 0; width: 80px; height: 80px; background: radial-gradient(circle at top right, rgba(var(--primary-rgb), .15), transparent 70%); }
+    .stat-icon { font-size: 1.5rem; margin-bottom: 8px; }
+    .stat-value { font-size: 1.8rem; font-weight: 800; color: #fff; line-height: 1; margin-bottom: 4px; }
+    .stat-label { font-size: .72rem; color: #7fa6aa; letter-spacing: .5px; text-transform: uppercase; font-weight: 600; }
+
+    /* FILTERS */
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+    .filter-input { background: #0b1213; color: var(--text); border: 2px solid #1c2a2c; border-radius: 12px; padding: 10px 14px; font-size: .82rem; font-family: inherit; outline: none; min-width: 200px; }
+    .filter-input:focus { border-color: var(--primary); }
+    .filter-select { background: #0b1213; color: var(--text); border: 2px solid #1c2a2c; border-radius: 12px; padding: 10px 14px; font-size: .82rem; font-family: inherit; outline: none; cursor: pointer; }
+    .filter-select:focus { border-color: var(--primary); }
+    .export-btn { background: #173337; border: 1px solid #1f4d52; color: #b8dadd; padding: 10px 16px; border-radius: 12px; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .export-btn:hover { background: #1d4045; color: #fff; }
+
+    /* TABLE */
+    .table-wrap { background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; overflow: hidden; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    thead { background: #0a1213; }
+    th { padding: 14px 16px; font-size: .72rem; color: #7fa6aa; text-transform: uppercase; letter-spacing: .7px; font-weight: 700; text-align: left; border-bottom: 1px solid #1e2627; cursor: pointer; user-select: none; white-space: nowrap; }
+    th:hover { color: var(--primary); }
+    th .sort-icon { margin-left: 4px; opacity: .4; }
+    th.sorted .sort-icon { opacity: 1; color: var(--primary); }
+    td { padding: 12px 16px; font-size: .82rem; border-bottom: 1px solid #141a1b; white-space: nowrap; }
+    tr:hover td { background: rgba(var(--primary-rgb), .04); }
+
+    /* STATUS PILLS */
+    .pill { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .68rem; font-weight: 700; letter-spacing: .4px; }
+    .pill-completed { background: rgba(34,227,134,.12); color: var(--success); border: 1px solid rgba(34,227,134,.25); }
+    .pill-watching { background: rgba(39,171,182,.12); color: var(--primary); border: 1px solid rgba(39,171,182,.25); }
+    .pill-started { background: rgba(245,197,24,.12); color: var(--warning); border: 1px solid rgba(245,197,24,.25); }
+    .pill-not-started { background: rgba(255,255,255,.05); color: #556b6e; border: 1px solid #1e2627; }
+
+    /* PROGRESS MINI BAR */
+    .mini-progress { width: 80px; height: 6px; background: #0b1314; border-radius: 10px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+    .mini-progress-fill { height: 100%; background: linear-gradient(90deg, #27abb6, #6edbe4); border-radius: 10px; }
+
+    /* PAGINATION */
+    .pagination { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid #1e2627; }
+    .page-info { font-size: .72rem; color: #7fa6aa; }
+    .page-btns { display: flex; gap: 6px; }
+    .page-btn { background: #173337; border: 1px solid #1f4d52; color: #b8dadd; padding: 6px 12px; border-radius: 8px; font-size: .72rem; cursor: pointer; font-family: inherit; }
+    .page-btn:hover { background: #1d4045; color: #fff; }
+    .page-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .page-btn.active { background: var(--primary); color: #002b30; border-color: var(--primary); }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { color: #7fa6aa; font-size: .88rem; }
+
+    /* LOADING */
+    .loading { text-align: center; padding: 40px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #1e2627; border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* AUTH FORM */
+    .auth-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 22px; padding: 36px 32px; max-width: 400px; margin: 80px auto; text-align: center; }
+    .auth-card h2 { color: var(--primary); margin-bottom: 8px; font-size: 1.1rem; }
+    .auth-card p { color: #7fa6aa; font-size: .78rem; margin-bottom: 20px; }
+    .auth-card input { width: 100%; background: #0b1213; color: var(--text); border: 2px solid #1c2a2c; border-radius: 14px; padding: 14px 16px; font-size: .95rem; font-family: inherit; outline: none; margin-bottom: 12px; }
+    .auth-card input:focus { border-color: var(--primary); }
+    .auth-card button { width: 100%; background: var(--primary); border: 2px solid var(--primary); color: #002b30; padding: 14px; border-radius: 14px; font-weight: 800; font-size: .95rem; cursor: pointer; font-family: inherit; }
+    .auth-card .auth-error { color: var(--danger); font-size: .78rem; margin-top: 8px; min-height: 20px; }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-value { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">Encontro <span>UP</span> — Dashboard</a>
+      <div class="nav-right">
+        <button class="btn-refresh" onclick="loadDashboard()">↻ Atualizar</button>
+        <a href="encontro-online.html" class="btn-back">← Voltar ao site</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ADMIN AUTH -->
+  <div id="authScreen">
+    <div class="auth-card">
+      <h2>🔐 Acesso ao Dashboard</h2>
+      <p>Digite a senha de administrador para acessar os dados.</p>
+      <input type="password" id="adminPassword" placeholder="Senha do administrador" />
+      <button onclick="adminLogin()">Acessar Dashboard</button>
+      <div class="auth-error" id="authError"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD CONTENT -->
+  <div id="dashContent" style="display:none;">
+    <div class="main">
+      <div class="dash-header">
+        <h1>📊 Dashboard — Encontro UP Online</h1>
+        <p>Acompanhe os acessos e o engajamento dos participantes em tempo real.</p>
+        <div class="last-updated" id="lastUpdated">—</div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-value" id="totalUsers">—</div>
+          <div class="stat-label">Total Cadastrados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">▶️</div>
+          <div class="stat-value" id="totalWatchers">—</div>
+          <div class="stat-label">Assistiram</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-value" id="totalCompleted">—</div>
+          <div class="stat-label">Concluíram (≥90%)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⏱️</div>
+          <div class="stat-value" id="avgWatchTime">—</div>
+          <div class="stat-label">Tempo Médio</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-value" id="avgPercent">—</div>
+          <div class="stat-label">% Média Assistida</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-value" id="avgFocus">—</div>
+          <div class="stat-label">Foco Médio</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⏩</div>
+          <div class="stat-value" id="totalSkips">—</div>
+          <div class="stat-label">Pulos Totais</div>
+        </div>
+      </div>
+
+      <!-- FILTERS -->
+      <div class="filters">
+        <input type="text" class="filter-input" id="searchInput" placeholder="🔍 Buscar por nome ou telefone..." oninput="applyFilters()" />
+        <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+          <option value="">Todos os status</option>
+          <option value="completed">Concluíram</option>
+          <option value="watching">Assistindo (10-89%)</option>
+          <option value="started">Iniciaram (&lt;10%)</option>
+          <option value="not-started">Não assistiram</option>
+        </select>
+        <button class="export-btn" onclick="exportCSV()">📥 Exportar CSV</button>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="sortBy('name')">Nome <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('phone')">Telefone <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('registeredAt')">Cadastro <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('percentWatched')">Progresso <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('totalWatchedSeconds')">Tempo <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('forwardSkips')">Pulos <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('rewatchCount')">Reassistiu <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('focusPercent')">Foco <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('playbackSpeed')">Veloc. <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('status')">Status <span class="sort-icon">↕</span></th>
+                <th onclick="sortBy('lastWatchedAt')">Último Acesso <span class="sort-icon">↕</span></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr><td colspan="11"><div class="loading"><div class="spinner"></div><p style="color:#7fa6aa;font-size:.82rem;">Carregando dados...</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const API_URL = window.FORM_CONFIG?.ONLINE_SERVER_URL || 'http://localhost:5175';
+
+    let allData = [];
+    let filteredData = [];
+    let currentSort = { field: 'registeredAt', dir: 'desc' };
+    let currentPage = 1;
+    const perPage = 25;
+    let adminToken = localStorage.getItem('up_admin_token') || '';
+
+    // ===== ADMIN AUTH =====
+    async function adminLogin() {
+      const pw = document.getElementById('adminPassword').value;
+      const errEl = document.getElementById('authError');
+      errEl.textContent = '';
+
+      try {
+        const res = await fetch(API_URL + '/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Senha incorreta');
+
+        adminToken = data.token;
+        localStorage.setItem('up_admin_token', adminToken);
+        showDashboard();
+      } catch (e) {
+        errEl.textContent = e.message;
+      }
+    }
+
+    // Check if has valid token
+    if (adminToken) {
+      showDashboard();
+    }
+
+    // Enter key on password
+    document.getElementById('adminPassword').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') adminLogin();
+    });
+
+    function showDashboard() {
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('dashContent').style.display = 'block';
+      loadDashboard();
+    }
+
+    // ===== LOAD DATA =====
+    async function loadDashboard() {
+      try {
+        const res = await fetch(API_URL + '/api/admin/dashboard', {
+          headers: { 'Authorization': 'Bearer ' + adminToken }
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('up_admin_token');
+          adminToken = '';
+          document.getElementById('authScreen').style.display = 'block';
+          document.getElementById('dashContent').style.display = 'none';
+          return;
+        }
+
+        const data = await res.json();
+        allData = data.users || [];
+
+        updateStats(data.stats);
+        applyFilters();
+        document.getElementById('lastUpdated').textContent = 'Atualizado em: ' + new Date().toLocaleString('pt-BR');
+      } catch (e) {
+        document.getElementById('tableBody').innerHTML = `<tr><td colspan="11"><div class="empty-state"><div class="icon">⚠️</div><p>Erro ao carregar: ${escapeHTML(e.message)}</p></div></td></tr>`;
+      }
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ===== STATS =====
+    function updateStats(stats) {
+      if (!stats) return;
+      document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
+      document.getElementById('totalWatchers').textContent = stats.totalWatchers || 0;
+      document.getElementById('totalCompleted').textContent = stats.totalCompleted || 0;
+      document.getElementById('avgWatchTime').textContent = fmtMinutes(stats.avgWatchTimeSeconds || 0);
+      document.getElementById('avgPercent').textContent = Math.round(stats.avgPercent || 0) + '%';
+
+      // Compute advanced stats from loaded data
+      const watchers = allData.filter(u => (u.totalWatchedSeconds || 0) > 0);
+      if (watchers.length > 0) {
+        const avgFocus = watchers.reduce((s, u) => s + (u.focusPercent || 0), 0) / watchers.length;
+        document.getElementById('avgFocus').textContent = Math.round(avgFocus) + '%';
+        const totalSkips = allData.reduce((s, u) => s + (u.forwardSkips || 0), 0);
+        document.getElementById('totalSkips').textContent = totalSkips;
+      } else {
+        document.getElementById('avgFocus').textContent = '—';
+        document.getElementById('totalSkips').textContent = '0';
+      }
+    }
+
+    function fmtMinutes(s) {
+      s = Math.round(s);
+      if (s < 60) return s + ' seg';
+      const m = Math.floor(s / 60);
+      if (m < 60) return m + ' min';
+      return Math.floor(m / 60) + 'h ' + (m % 60) + 'min';
+    }
+
+    // ===== FILTER + SORT =====
+    function applyFilters() {
+      const search = document.getElementById('searchInput').value.toLowerCase().trim();
+      const status = document.getElementById('statusFilter').value;
+
+      filteredData = allData.filter(u => {
+        if (search && !u.name.toLowerCase().includes(search) && !u.phone.includes(search)) return false;
+        if (status) {
+          const s = getUserStatus(u);
+          if (s !== status) return false;
+        }
+        return true;
+      });
+
+      doSort();
+      currentPage = 1;
+      renderTable();
+    }
+
+    function getUserStatus(u) {
+      const p = u.percentWatched || 0;
+      if (p >= 90) return 'completed';
+      if (p >= 10) return 'watching';
+      if (u.totalWatchedSeconds > 0) return 'started';
+      return 'not-started';
+    }
+
+    function sortBy(field) {
+      if (currentSort.field === field) {
+        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSort = { field, dir: 'asc' };
+      }
+      doSort();
+      renderTable();
+    }
+
+    function doSort() {
+      const { field, dir } = currentSort;
+      filteredData.sort((a, b) => {
+        let va = a[field] ?? '', vb = b[field] ?? '';
+        if (field === 'status') { va = getUserStatus(a); vb = getUserStatus(b); }
+        if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+        if (va < vb) return dir === 'asc' ? -1 : 1;
+        if (va > vb) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    // ===== RENDER TABLE =====
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      const start = (currentPage - 1) * perPage;
+      const pageData = filteredData.slice(start, start + perPage);
+
+      if (filteredData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><div class="icon">📭</div><p>Nenhum participante encontrado.</p></div></td></tr>`;
+        document.getElementById('pagination').style.display = 'none';
+        return;
+      }
+
+      tbody.innerHTML = pageData.map(u => {
+        const status = getUserStatus(u);
+        const percent = u.percentWatched || 0;
+        const pillClass = `pill-${status}`;
+        const pillText = { completed: 'Concluído', watching: 'Assistindo', started: 'Iniciou', 'not-started': 'Não assistiu' }[status];
+        const focus = u.focusPercent != null ? Math.round(u.focusPercent) + '%' : '—';
+        const focusColor = (u.focusPercent || 0) >= 80 ? 'var(--success)' : (u.focusPercent || 0) >= 50 ? 'var(--warning)' : 'var(--danger)';
+        const speed = u.playbackSpeed ? u.playbackSpeed + 'x' : '—';
+        const speedColor = (u.playbackSpeed || 1) > 1.5 ? 'var(--warning)' : 'var(--muted)';
+
+        return `<tr>
+          <td><strong>${escapeHTML(u.name)}</strong></td>
+          <td>${escapeHTML(formatPhone(u.phone))}</td>
+          <td>${u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('pt-BR') : '—'}</td>
+          <td><div class="mini-progress"><div class="mini-progress-fill" style="width:${percent}%"></div></div>${percent}%</td>
+          <td>${fmtMinutes(u.totalWatchedSeconds || 0)}</td>
+          <td style="text-align:center;">${u.forwardSkips || 0}</td>
+          <td style="text-align:center;">${u.rewatchCount || 0}</td>
+          <td style="color:${focusColor};font-weight:700;">${focus}</td>
+          <td style="color:${speedColor};">${speed}</td>
+          <td><span class="pill ${pillClass}">${pillText}</span></td>
+          <td>${u.lastWatchedAt ? new Date(u.lastWatchedAt).toLocaleString('pt-BR') : '—'}</td>
+        </tr>`;
+      }).join('');
+
+      renderPagination();
+    }
+
+    function formatPhone(p) {
+      if (!p || p.length < 10) return p || '—';
+      return `(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`;
+    }
+
+    // ===== PAGINATION =====
+    function renderPagination() {
+      const totalPages = Math.ceil(filteredData.length / perPage);
+      const pag = document.getElementById('pagination');
+
+      if (totalPages <= 1) {
+        pag.style.display = 'none';
+        return;
+      }
+
+      pag.style.display = 'flex';
+      const start = (currentPage - 1) * perPage + 1;
+      const end = Math.min(currentPage * perPage, filteredData.length);
+
+      let btns = '';
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) {
+          btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+        } else if (Math.abs(i - currentPage) === 3) {
+          btns += `<span style="color:#556b6e;padding:0 4px;">...</span>`;
+        }
+      }
+
+      pag.innerHTML = `
+        <div class="page-info">${start}–${end} de ${filteredData.length}</div>
+        <div class="page-btns">
+          <button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>←</button>
+          ${btns}
+          <button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>→</button>
+        </div>`;
+    }
+
+    function goPage(p) {
+      const totalPages = Math.ceil(filteredData.length / perPage);
+      if (p < 1 || p > totalPages) return;
+      currentPage = p;
+      renderTable();
+    }
+
+    // ===== EXPORT CSV =====
+    function exportCSV() {
+      const headers = ['Nome', 'Telefone', 'Cadastro', 'Progresso %', 'Tempo Assistido (min)', 'Pulos', 'Reassistiu', 'Foco %', 'Velocidade', 'Status', 'Último Acesso'];
+      const rows = filteredData.map(u => [
+        u.name,
+        formatPhone(u.phone),
+        u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('pt-BR') : '',
+        u.percentWatched || 0,
+        Math.round((u.totalWatchedSeconds || 0) / 60),
+        u.forwardSkips || 0,
+        u.rewatchCount || 0,
+        u.focusPercent != null ? Math.round(u.focusPercent) : '',
+        u.playbackSpeed || '',
+        { completed: 'Concluído', watching: 'Assistindo', started: 'Iniciou', 'not-started': 'Não assistiu' }[getUserStatus(u)],
+        u.lastWatchedAt ? new Date(u.lastWatchedAt).toLocaleString('pt-BR') : ''
+      ]);
+
+      let csv = '\uFEFF'; // BOM for Excel UTF-8
+      csv += headers.join(';') + '\n';
+      rows.forEach(r => {
+        csv += r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';') + '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `encontro-up-dashboard-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
