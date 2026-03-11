@@ -47,13 +47,16 @@
 
     /* ===== CUSTOM VIDEO PLAYER ===== */
     .player-container { margin-bottom: 24px; border-radius: 20px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); background: #000; position: relative; }
-    .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; cursor: pointer; }
-    .video-area video { width: 100%; height: 100%; display: block; }
+    .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; }
+    .video-area iframe { width: 100%; height: 100%; display: block; border: none; }
+
+    /* Click shield — blocks YouTube UI clicks */
+    .click-shield { position: absolute; inset: 0; z-index: 5; cursor: pointer; }
 
     /* Big play overlay */
     .big-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.4); z-index: 10; transition: opacity .3s; }
     .big-play.hidden { opacity: 0; pointer-events: none; }
-    .big-play-btn { width: 80px; height: 80px; background: rgba(var(--primary-rgb), .85); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(var(--primary-rgb), .5); transition: transform .2s; }
+    .big-play-btn { width: 80px; height: 80px; background: rgba(var(--primary-rgb), .85); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(var(--primary-rgb), .5); transition: transform .2s; cursor: pointer; }
     .big-play-btn:hover { transform: scale(1.1); }
     .big-play-btn svg { width: 32px; height: 32px; fill: #fff; margin-left: 4px; }
 
@@ -67,14 +70,9 @@
     /* ===== CONTROLS BAR ===== */
     .controls { background: #0a1213; padding: 0; }
 
-    /* Heatmap scrubber */
-    .scrubber-wrap { position: relative; height: 32px; cursor: pointer; padding: 10px 0; }
-    .heatmap-bar { position: absolute; top: 12px; left: 0; right: 0; height: 8px; display: flex; border-radius: 4px; overflow: hidden; background: #1a2223; }
-    .heatmap-segment { height: 100%; transition: background .3s; }
-    .scrubber-played { position: absolute; top: 12px; left: 0; height: 8px; background: rgba(var(--primary-rgb), .5); border-radius: 4px 0 0 4px; pointer-events: none; z-index: 2; }
-    .scrubber-thumb { position: absolute; top: 8px; width: 16px; height: 16px; background: var(--primary); border: 2px solid #fff; border-radius: 50%; transform: translateX(-50%); z-index: 3; pointer-events: none; box-shadow: 0 0 8px rgba(var(--primary-rgb),.6); transition: left .1s; }
-    .scrubber-tooltip { position: absolute; top: -28px; transform: translateX(-50%); background: #1a2e30; color: #d5f7fa; padding: 4px 8px; border-radius: 8px; font-size: .65rem; font-weight: 700; pointer-events: none; display: none; white-space: nowrap; z-index: 5; }
-    .scrubber-wrap:hover .scrubber-tooltip { display: block; }
+    /* Progress bar (view-only, no seeking) */
+    .progress-wrap { position: relative; height: 6px; background: #1a2223; }
+    .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width .5s linear; }
 
     /* Buttons row */
     .controls-row { display: flex; align-items: center; gap: 6px; padding: 8px 14px 10px; }
@@ -89,6 +87,16 @@
     .ctrl-vol-slider { -webkit-appearance: none; width: 70px; height: 4px; background: #1a2223; border-radius: 4px; outline: none; cursor: pointer; }
     .ctrl-vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--primary); border-radius: 50%; cursor: pointer; }
     .ctrl-fullscreen { margin-left: 2px; }
+
+    /* Quality menu */
+    .quality-menu { position: relative; display: inline-block; }
+    .quality-btn { background: #132326; border: 1px solid #204347; color: #9bd5da; padding: 4px 8px; border-radius: 8px; font-size: .65rem; font-weight: 700; cursor: pointer; font-family: inherit; min-width: 50px; text-align: center; }
+    .quality-btn:hover { background: #1d4045; color: #fff; }
+    .quality-dropdown { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #0f1a1b; border: 1px solid #204347; border-radius: 10px; padding: 6px 0; margin-bottom: 6px; min-width: 100px; z-index: 50; }
+    .quality-dropdown.show { display: block; }
+    .quality-option { display: block; width: 100%; background: none; border: none; color: #9bd5da; padding: 6px 14px; font-size: .7rem; font-weight: 600; cursor: pointer; text-align: left; font-family: inherit; }
+    .quality-option:hover { background: #1a2e30; color: #fff; }
+    .quality-option.active { color: var(--primary); }
 
     /* ===== ANALYTICS PANEL ===== */
     .analytics-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px; }
@@ -166,32 +174,29 @@
     <!-- ===== CUSTOM VIDEO PLAYER ===== -->
     <div class="player-container" id="playerContainer">
       <div class="video-area" id="videoArea">
-        <!-- Modo EMBED (Google Drive / YouTube / Vimeo) -->
-        <iframe id="vidIframe" style="display:none; width:100%; height:100%; border:none;" allowfullscreen allow="autoplay; encrypted-media"></iframe>
-        <!-- Modo DIRETO (arquivo .mp4) -->
-        <video id="vid" preload="metadata" playsinline style="display:none;">
-          <source src="video/aula.mp4" type="video/mp4">
-        </video>
-        <div class="big-play" id="bigPlay" style="display:none;">
+        <!-- YouTube player injected here -->
+        <div id="ytPlayer"></div>
+        <!-- Transparent shield blocks YouTube UI (prevents seeking) -->
+        <div class="click-shield" id="clickShield"></div>
+        <!-- Big play button -->
+        <div class="big-play" id="bigPlay">
           <div class="big-play-btn">
             <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </div>
         </div>
+        <!-- Tab away overlay -->
         <div class="tab-away-overlay" id="tabAwayOverlay">
           <div class="icon">👀</div>
           <div class="msg">Parece que você saiu da aba.<br>O vídeo foi pausado automaticamente.</div>
-          <button class="btn-resume" onclick="resumeFromTab()">Continuar Assistindo</button>
+          <button class="btn-resume" id="btnResume">Continuar Assistindo</button>
         </div>
       </div>
 
-      <!-- CONTROLS (only for direct MP4 mode) -->
-      <div class="controls" id="videoControls" style="display:none;">
-        <!-- Heatmap Scrubber -->
-        <div class="scrubber-wrap" id="scrubberWrap">
-          <div class="heatmap-bar" id="heatmapBar"></div>
-          <div class="scrubber-played" id="scrubberPlayed"></div>
-          <div class="scrubber-thumb" id="scrubberThumb"></div>
-          <div class="scrubber-tooltip" id="scrubberTooltip">0:00</div>
+      <!-- CUSTOM CONTROLS -->
+      <div class="controls" id="videoControls">
+        <!-- View-only progress bar -->
+        <div class="progress-wrap">
+          <div class="progress-bar" id="progressBar"></div>
         </div>
         <!-- Buttons -->
         <div class="controls-row">
@@ -200,28 +205,26 @@
             <svg id="iconPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             <svg id="iconPause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
           </button>
-          <!-- Rewind 10s -->
-          <button class="ctrl-btn" title="-10s" onclick="vid.currentTime = Math.max(0, vid.currentTime - 10)">
-            <svg viewBox="0 0 24 24"><path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/><text x="12" y="15.5" text-anchor="middle" font-size="7" fill="currentColor" font-weight="700">10</text></svg>
-          </button>
-          <!-- Forward 10s -->
-          <button class="ctrl-btn" title="+10s" onclick="vid.currentTime = Math.min(vid.duration || 0, vid.currentTime + 10)">
-            <svg viewBox="0 0 24 24"><path d="M12.01 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/><text x="12" y="15.5" text-anchor="middle" font-size="7" fill="currentColor" font-weight="700">10</text></svg>
-          </button>
           <!-- Time -->
           <span class="ctrl-time" id="ctrlTime">0:00 / 0:00</span>
           <div class="ctrl-spacer"></div>
           <!-- Speed -->
-          <button class="ctrl-speed" id="btnSpeed" title="Velocidade" onclick="cycleSpeed()">1x</button>
+          <button class="ctrl-speed" id="btnSpeed" title="Velocidade">1x</button>
+          <!-- Quality -->
+          <div class="quality-menu" id="qualityMenu">
+            <button class="quality-btn" id="btnQuality" title="Qualidade">Auto</button>
+            <div class="quality-dropdown" id="qualityDropdown"></div>
+          </div>
           <!-- Volume -->
           <div class="ctrl-vol-wrap">
-            <button class="ctrl-btn" id="btnMute" title="Mudo" onclick="toggleMute()">
+            <button class="ctrl-btn" id="btnMute" title="Mudo">
               <svg id="iconVol" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+              <svg id="iconMuted" viewBox="0 0 24 24" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
             </button>
-            <input type="range" class="ctrl-vol-slider" id="volSlider" min="0" max="1" step="0.05" value="1" oninput="vid.volume=this.value" />
+            <input type="range" class="ctrl-vol-slider" id="volSlider" min="0" max="100" step="5" value="100" />
           </div>
           <!-- Fullscreen -->
-          <button class="ctrl-btn ctrl-fullscreen" title="Tela cheia" onclick="toggleFS()">
+          <button class="ctrl-btn ctrl-fullscreen" id="btnFullscreen" title="Tela cheia">
             <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
           </button>
         </div>
@@ -273,14 +276,9 @@
         <div class="a-label">Ponto Mais Longe</div>
       </div>
       <div class="a-card">
-        <div class="a-icon">🔁</div>
-        <div class="a-value" id="aRewatches">0</div>
-        <div class="a-label">Trechos Reassistidos</div>
-      </div>
-      <div class="a-card warn">
-        <div class="a-icon">⏩</div>
-        <div class="a-value" id="aSkips">0</div>
-        <div class="a-label">Pulos Pra Frente</div>
+        <div class="a-icon">📊</div>
+        <div class="a-value" id="aPercent">0%</div>
+        <div class="a-label">Progresso</div>
       </div>
       <div class="a-card success" id="aCompletionCard" style="display:none;">
         <div class="a-icon">✅</div>
@@ -309,6 +307,8 @@
   </footer>
 
   <script src="config.js"></script>
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
   const API_URL = window.FORM_CONFIG?.ONLINE_SERVER_URL ?? '';
 
@@ -318,68 +318,22 @@
   if (!token || !user) window.location.href = 'encontro-online.html';
   document.getElementById('userName').textContent = user?.name || '—';
 
-  // ===== VIDEO SOURCE (external URL from config) =====
-  const videoUrl = window.FORM_CONFIG?.VIDEO_URL || '';
-  const isEmbedMode = /drive\.google\.com|youtube\.com|youtu\.be|vimeo\.com|\/embed|\/preview/.test(videoUrl);
-
-  if (isEmbedMode && videoUrl) {
-    // EMBED MODE: Google Drive, YouTube, Vimeo
-    document.getElementById('vidIframe').src = videoUrl;
-    document.getElementById('vidIframe').style.display = 'block';
-    document.getElementById('vid').style.display = 'none';
-    document.getElementById('videoControls').style.display = 'none';
-    document.getElementById('bigPlay').style.display = 'none';
-  } else {
-    // DIRECT MP4 MODE
-    document.getElementById('vid').style.display = 'block';
-    document.getElementById('videoControls').style.display = 'block';
-    document.getElementById('bigPlay').style.display = 'flex';
-    if (videoUrl) {
-      const vid = document.getElementById('vid');
-      vid.innerHTML = '';
-      const source = document.createElement('source');
-      source.src = videoUrl;
-      source.type = 'video/mp4';
-      vid.appendChild(source);
-      vid.load();
-    }
-  }
-
   function logout() {
     localStorage.removeItem('up_token');
     localStorage.removeItem('up_user');
     window.location.href = 'encontro-online.html';
   }
 
-  // ===== VIDEO ELEMENTS =====
-  const vid = document.getElementById('vid');
-  const bigPlay = document.getElementById('bigPlay');
-  const scrubberWrap = document.getElementById('scrubberWrap');
-  const heatmapBar = document.getElementById('heatmapBar');
-  const scrubberPlayed = document.getElementById('scrubberPlayed');
-  const scrubberThumb = document.getElementById('scrubberThumb');
-  const scrubberTooltip = document.getElementById('scrubberTooltip');
+  // ===== EXTRACT YOUTUBE VIDEO ID =====
+  function extractYTId(url) {
+    const m = url.match(/(?:youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
 
-  // ===== TRACKING STATE =====
-  const SEGMENTS = 100; // divide video into 100 segments for heatmap
-  let segmentWatchCount = new Array(SEGMENTS).fill(0); // how many times each segment was watched
-  let isPlaying = false;
-  let lastTickTime = 0;
-  let totalRealSeconds = 0;     // actual seconds playing (excludes tab-away, paused)
-  let farthestPoint = 0;        // farthest second reached
-  let forwardSkips = 0;         // times user jumped forward
-  let rewatchCount = 0;         // times user went back to rewatch
-  let lastTimeUpdate = 0;       // used to detect skips
-  let sessionCount = 1;
-  let tabFocusTime = Date.now();
-  let tabBlurTotal = 0;         // total ms tab was blurred
-  let tabBlurStart = 0;
-  let currentSpeed = 1;
-  let completed = false;
-  let pageStartTime = Date.now();
-  let lastSyncTime = 0;
+  const videoUrl = window.FORM_CONFIG?.VIDEO_URL || '';
+  const ytVideoId = extractYTId(videoUrl);
 
-  // ===== FORMAT HELPERS (shared) =====
+  // ===== FORMAT HELPERS =====
   function fmt(s) {
     s = Math.floor(Math.max(0, s));
     const h = Math.floor(s / 3600);
@@ -397,281 +351,229 @@
     return m < 60 ? m + ' min' : Math.floor(m/60) + 'h ' + (m%60) + 'min';
   }
 
-  // ===== EMBED MODE: simplified page-time tracking =====
-  if (isEmbedMode) {
-    let embedStartTime = Date.now();
-    let embedTabBlurTotal = 0;
-    let embedTabBlurStart = 0;
-    let embedFocusSeconds = 0;
-    let embedSynced = false;
+  // ===== TRACKING STATE =====
+  const SEGMENTS = 100;
+  let segmentWatchCount = new Array(SEGMENTS).fill(0);
+  let isPlaying = false;
+  let lastTickTime = 0;
+  let totalRealSeconds = 0;
+  let farthestPoint = 0;
+  let forwardSkips = 0;
+  let sessionCount = 1;
+  let tabBlurTotal = 0;
+  let tabBlurStart = 0;
+  let currentSpeed = 1;
+  let completed = false;
+  let pageStartTime = Date.now();
+  let lastSyncTime = 0;
+  let videoDuration = 0;
+  let maxAllowedTime = 0; // anti-skip: farthest time legitimately reached
 
-    function getEmbedFocusSeconds() {
-      const totalPage = (Date.now() - embedStartTime) / 1000;
-      const blurSec = (embedTabBlurTotal + (embedTabBlurStart > 0 ? Date.now() - embedTabBlurStart : 0)) / 1000;
-      return Math.max(0, totalPage - blurSec);
-    }
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        embedTabBlurStart = Date.now();
-      } else {
-        if (embedTabBlurStart > 0) {
-          embedTabBlurTotal += Date.now() - embedTabBlurStart;
-          embedTabBlurStart = 0;
-        }
-      }
-    });
-
-    // Update UI every 5s in embed mode
-    setInterval(() => {
-      embedFocusSeconds = getEmbedFocusSeconds();
-      totalRealSeconds = embedFocusSeconds;
-
-      // Update engagement ring
-      const totalPage = (Date.now() - embedStartTime) / 1000;
-      const focusPct = totalPage > 0 ? Math.round(((totalPage - embedTabBlurTotal / 1000) / totalPage) * 100) : 100;
-      document.getElementById('detailRealTime').textContent = '⏱ Tempo na página: ' + fmtMin(totalPage);
-      document.getElementById('detailSessions').textContent = '🔄 Sessões: ' + sessionCount;
-      document.getElementById('detailSpeed').textContent = '⚡ Velocidade: 1x';
-      document.getElementById('detailTab').textContent = '👁 Foco: ' + focusPct + '%';
-      document.getElementById('aRealTime').textContent = fmt(embedFocusSeconds);
-
-      // Ring - estimate based on focus time (assume ~60min video)
-      const estimatedDuration = 60 * 60; // 1 hour estimate
-      const estimatedPct = Math.min(100, Math.round((embedFocusSeconds / estimatedDuration) * 100));
-      const circumference = 314.16;
-      document.getElementById('ringFill').style.strokeDashoffset = circumference - (circumference * estimatedPct / 100);
-      document.getElementById('ringText').textContent = fmtMin(embedFocusSeconds);
-
-      if (embedFocusSeconds > 300) {
-        document.getElementById('engTitle').textContent = '📺 Assistindo...';
-        document.getElementById('engDesc').textContent = 'Acompanhando o encontro. Continue focado para absorver o conteúdo!';
-      }
-
-      // Sync every 30s
-      if (Date.now() - lastSyncTime > 30000 && embedFocusSeconds > 0) {
-        syncEmbedToServer();
-      }
-    }, 5000);
-
-    async function syncEmbedToServer() {
-      lastSyncTime = Date.now();
-      if (!token) return;
-      const totalPage = (Date.now() - embedStartTime) / 1000;
-      const focusPct = totalPage > 0 ? Math.round(((totalPage - embedTabBlurTotal / 1000) / totalPage) * 100) : 100;
-      const payload = {
-        totalWatchedSeconds: Math.round(getEmbedFocusSeconds()),
-        currentTime: 0,
-        duration: 0,
-        percentWatched: 0,
-        completed: false,
-        farthestPoint: 0,
-        forwardSkips: 0,
-        rewatchCount: 0,
-        playbackSpeed: 1,
-        focusPercent: focusPct,
-        segmentData: []
-      };
-      try {
-        await fetch(API_URL + '/api/analytics/watch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify(payload)
-        });
-      } catch (e) { /* silent */ }
-    }
-
-    // Beacon on unload (embed mode)
-    window.addEventListener('beforeunload', () => {
-      const totalPage = (Date.now() - embedStartTime) / 1000;
-      const focusPct = totalPage > 0 ? Math.round(((totalPage - embedTabBlurTotal / 1000) / totalPage) * 100) : 100;
-      const payload = JSON.stringify({
-        totalWatchedSeconds: Math.round(getEmbedFocusSeconds()),
-        currentTime: 0, duration: 0, percentWatched: 0, completed: false,
-        farthestPoint: 0, forwardSkips: 0, rewatchCount: 0, playbackSpeed: 1,
-        focusPercent: focusPct, segmentData: []
-      });
-      navigator.sendBeacon(
-        API_URL + '/api/analytics/watch-beacon?token=' + encodeURIComponent(token),
-        new Blob([payload], { type: 'application/json' })
-      );
-    });
-
-    // Load previous session data for embed mode
-    (async function loadEmbedWatchData() {
-      try {
-        const res = await fetch(API_URL + '/api/analytics/my-watch', {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.totalWatchedSeconds) totalRealSeconds = data.totalWatchedSeconds;
-          if (data.sessions) sessionCount = data.sessions + 1;
-          document.getElementById('aRealTime').textContent = fmt(totalRealSeconds);
-        }
-      } catch (e) { /* silent */ }
-    })();
-
-    // Hide heatmap and detailed cards in embed mode (can't track video position)
-    document.querySelector('.heatmap-legend').style.display = 'none';
-    document.getElementById('aFarthest').parentElement.style.display = 'none';
-    document.getElementById('aRewatches').parentElement.style.display = 'none';
-    document.getElementById('aSkips').parentElement.style.display = 'none';
-
-  } else {
-  // ===== DIRECT VIDEO MODE: full analytics =====
-
-  // ===== HEATMAP =====
-  function buildHeatmap() {
-    heatmapBar.innerHTML = '';
-    for (let i = 0; i < SEGMENTS; i++) {
-      const seg = document.createElement('div');
-      seg.className = 'heatmap-segment';
-      seg.style.flex = '1';
-      heatmapBar.appendChild(seg);
-    }
-    updateHeatmapColors();
-  }
-
-  function updateHeatmapColors() {
-    const segs = heatmapBar.children;
-    const maxCount = Math.max(1, ...segmentWatchCount);
-    for (let i = 0; i < SEGMENTS; i++) {
-      const ratio = segmentWatchCount[i] / maxCount;
-      if (segmentWatchCount[i] === 0) segs[i].style.background = '#1a2223';
-      else if (ratio < 0.25) segs[i].style.background = '#1a3a40';
-      else if (ratio < 0.5) segs[i].style.background = '#1e7e86';
-      else if (ratio < 0.75) segs[i].style.background = '#27abb6';
-      else segs[i].style.background = '#6edbe4';
-    }
-  }
-
-  function getSegmentIndex(time) {
-    const duration = vid.duration || 1;
-    return Math.min(SEGMENTS - 1, Math.floor((time / duration) * SEGMENTS));
-  }
-
-  buildHeatmap();
-
-  // ===== SCRUBBER INTERACTION =====
-  let isScrubbing = false;
-
-  function scrubTo(e) {
-    const rect = scrubberWrap.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    if (vid.duration) vid.currentTime = pct * vid.duration;
-  }
-
-  scrubberWrap.addEventListener('mousedown', (e) => {
-    isScrubbing = true;
-    scrubTo(e);
-  });
-  document.addEventListener('mousemove', (e) => {
-    if (isScrubbing) scrubTo(e);
-    // Tooltip
-    const rect = scrubberWrap.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    scrubberTooltip.textContent = fmt(pct * (vid.duration || 0));
-    scrubberTooltip.style.left = (pct * 100) + '%';
-  });
-  document.addEventListener('mouseup', () => { isScrubbing = false; });
-
-  // ===== PLAY / PAUSE =====
+  // ===== UI ELEMENTS =====
+  const bigPlay = document.getElementById('bigPlay');
   const iconPlay = document.getElementById('iconPlay');
   const iconPause = document.getElementById('iconPause');
+  const iconVol = document.getElementById('iconVol');
+  const iconMuted = document.getElementById('iconMuted');
+  const progressBar = document.getElementById('progressBar');
+  const ctrlTime = document.getElementById('ctrlTime');
+  const volSlider = document.getElementById('volSlider');
+  const btnSpeed = document.getElementById('btnSpeed');
+  const btnQuality = document.getElementById('btnQuality');
+  const qualityDropdown = document.getElementById('qualityDropdown');
 
-  function togglePlay() {
-    if (vid.paused) vid.play();
-    else vid.pause();
+  // ===== YOUTUBE PLAYER =====
+  let player = null;
+  let playerReady = false;
+
+  window.onYouTubeIframeAPIReady = function() {
+    if (!ytVideoId) return;
+
+    player = new YT.Player('ytPlayer', {
+      videoId: ytVideoId,
+      playerVars: {
+        controls: 0,        // hide default YouTube controls
+        disablekb: 1,       // disable keyboard (prevents seeking via arrows)
+        modestbranding: 1,
+        rel: 0,             // no related videos at end
+        iv_load_policy: 3,  // no annotations
+        fs: 0,              // hide YT fullscreen btn (we have our own)
+        playsinline: 1,
+        cc_load_policy: 0,
+        origin: window.location.origin
+      },
+      events: {
+        onReady: onPlayerReady,
+        onStateChange: onPlayerStateChange
+      }
+    });
+  };
+
+  function onPlayerReady(event) {
+    playerReady = true;
+    videoDuration = player.getDuration();
+    setTimeout(buildQualityMenu, 2000);
+    startTrackingInterval();
+    loadWatchData();
   }
 
-  document.getElementById('videoArea').addEventListener('click', (e) => {
-    if (e.target.closest('.tab-away-overlay')) return;
-    togglePlay();
-  });
+  function onPlayerStateChange(event) {
+    const state = event.data;
+
+    if (state === YT.PlayerState.PLAYING) {
+      isPlaying = true;
+      lastTickTime = Date.now();
+      bigPlay.classList.add('hidden');
+      iconPlay.style.display = 'none';
+      iconPause.style.display = 'block';
+      if (!videoDuration) videoDuration = player.getDuration();
+
+    } else if (state === YT.PlayerState.PAUSED) {
+      flushTick();
+      isPlaying = false;
+      iconPlay.style.display = 'block';
+      iconPause.style.display = 'none';
+      syncToServer();
+
+    } else if (state === YT.PlayerState.ENDED) {
+      flushTick();
+      isPlaying = false;
+      completed = true;
+      iconPlay.style.display = 'block';
+      iconPause.style.display = 'none';
+      bigPlay.classList.remove('hidden');
+      syncToServer(true);
+    }
+  }
+
+  // ===== ANTI-SKIP: prevent forward seeking =====
+  function enforceAntiSkip() {
+    if (!playerReady || !player) return;
+    const ct = player.getCurrentTime();
+
+    if (ct > maxAllowedTime + 3) {
+      // User tried to skip ahead — send them back
+      player.seekTo(maxAllowedTime, true);
+      forwardSkips++;
+    } else if (ct > maxAllowedTime) {
+      maxAllowedTime = ct;
+    }
+  }
+
+  // ===== PLAY / PAUSE =====
+  function togglePlay() {
+    if (!playerReady) return;
+    const state = player.getPlayerState();
+    if (state === YT.PlayerState.PLAYING) {
+      player.pauseVideo();
+    } else {
+      player.playVideo();
+    }
+  }
+
+  document.getElementById('clickShield').addEventListener('click', togglePlay);
   bigPlay.addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
   document.getElementById('btnPlayPause').addEventListener('click', togglePlay);
 
-  vid.addEventListener('play', () => {
-    isPlaying = true;
-    lastTickTime = Date.now();
-    bigPlay.classList.add('hidden');
-    iconPlay.style.display = 'none';
-    iconPause.style.display = 'block';
+  // ===== SPEED =====
+  const speeds = [1, 1.25, 1.5, 2];
+  let speedIdx = 0;
+
+  btnSpeed.addEventListener('click', () => {
+    if (!playerReady) return;
+    speedIdx = (speedIdx + 1) % speeds.length;
+    currentSpeed = speeds[speedIdx];
+    player.setPlaybackRate(currentSpeed);
+    btnSpeed.textContent = currentSpeed + 'x';
   });
 
-  vid.addEventListener('pause', () => {
-    flushTick();
-    isPlaying = false;
-    iconPlay.style.display = 'block';
-    iconPause.style.display = 'none';
-    syncToServer();
-  });
+  // ===== QUALITY =====
+  const qualityLabels = {
+    'hd2160': '4K', 'hd1440': '1440p', 'hd1080': '1080p', 'hd720': '720p',
+    'large': '480p', 'medium': '360p', 'small': '240p', 'tiny': '144p'
+  };
 
-  vid.addEventListener('ended', () => {
-    flushTick();
-    isPlaying = false;
-    completed = true;
-    iconPlay.style.display = 'block';
-    iconPause.style.display = 'none';
-    bigPlay.classList.remove('hidden');
-    syncToServer(true);
-  });
+  function buildQualityMenu() {
+    if (!playerReady) return;
+    const levels = player.getAvailableQualityLevels();
+    qualityDropdown.innerHTML = '';
 
-  // ===== SKIP DETECTION =====
-  vid.addEventListener('seeking', () => {
-    const diff = vid.currentTime - lastTimeUpdate;
-    if (diff > 5) {
-      forwardSkips++;
-    } else if (diff < -3) {
-      rewatchCount++;
-    }
-  });
+    const autoBtn = document.createElement('button');
+    autoBtn.className = 'quality-option active';
+    autoBtn.textContent = 'Auto';
+    autoBtn.addEventListener('click', () => {
+      player.setPlaybackQualityRange('small', 'hd2160');
+      btnQuality.textContent = 'Auto';
+      qualityDropdown.querySelectorAll('.quality-option').forEach(o => o.classList.remove('active'));
+      autoBtn.classList.add('active');
+      qualityDropdown.classList.remove('show');
+    });
+    qualityDropdown.appendChild(autoBtn);
 
-  // ===== TIMEUPDATE — core tracking =====
-  vid.addEventListener('timeupdate', () => {
-    const ct = vid.currentTime;
-    const dur = vid.duration || 0;
-
-    // Mark segment as watched
-    const seg = getSegmentIndex(ct);
-    segmentWatchCount[seg]++;
-
-    // Farthest point
-    if (ct > farthestPoint) farthestPoint = ct;
-
-    lastTimeUpdate = ct;
-    updateUI();
-  });
-
-  // ===== ACCUMULATE REAL WATCH TIME =====
-  function flushTick() {
-    if (isPlaying && lastTickTime > 0) {
-      const delta = (Date.now() - lastTickTime) / 1000;
-      totalRealSeconds += Math.min(delta, 35); // cap at 35s to prevent anomalies
-      lastTickTime = Date.now();
-    }
+    levels.forEach(level => {
+      if (level === 'auto') return;
+      const btn = document.createElement('button');
+      btn.className = 'quality-option';
+      btn.textContent = qualityLabels[level] || level;
+      btn.addEventListener('click', () => {
+        player.setPlaybackQualityRange(level, level);
+        btnQuality.textContent = qualityLabels[level] || level;
+        qualityDropdown.querySelectorAll('.quality-option').forEach(o => o.classList.remove('active'));
+        btn.classList.add('active');
+        qualityDropdown.classList.remove('show');
+      });
+      qualityDropdown.appendChild(btn);
+    });
   }
 
-  // Tick every 5s
-  setInterval(() => {
-    if (isPlaying) {
-      flushTick();
-      updateUI();
+  btnQuality.addEventListener('click', (e) => {
+    e.stopPropagation();
+    qualityDropdown.classList.toggle('show');
+  });
+  document.addEventListener('click', () => qualityDropdown.classList.remove('show'));
+
+  // ===== VOLUME =====
+  volSlider.addEventListener('input', () => {
+    if (!playerReady) return;
+    const vol = parseInt(volSlider.value);
+    player.setVolume(vol);
+    if (vol === 0) player.mute(); else player.unMute();
+    updateVolumeIcon();
+  });
+
+  document.getElementById('btnMute').addEventListener('click', () => {
+    if (!playerReady) return;
+    if (player.isMuted()) {
+      player.unMute();
+      volSlider.value = player.getVolume();
+    } else {
+      player.mute();
+      volSlider.value = 0;
     }
-    // Sync every 30s
-    if (Date.now() - lastSyncTime > 30000 && totalRealSeconds > 0) {
-      syncToServer();
-    }
-  }, 5000);
+    updateVolumeIcon();
+  });
+
+  function updateVolumeIcon() {
+    if (!playerReady) return;
+    const muted = player.isMuted() || player.getVolume() === 0;
+    iconVol.style.display = muted ? 'none' : 'block';
+    iconMuted.style.display = muted ? 'block' : 'none';
+  }
+
+  // ===== FULLSCREEN =====
+  document.getElementById('btnFullscreen').addEventListener('click', () => {
+    const pc = document.getElementById('playerContainer');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else pc.requestFullscreen();
+  });
 
   // ===== TAB VISIBILITY — pause on tab away =====
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       tabBlurStart = Date.now();
-      if (isPlaying) {
+      if (isPlaying && playerReady) {
         flushTick();
-        vid.pause();
+        player.pauseVideo();
         document.getElementById('tabAwayOverlay').classList.add('show');
       }
     } else {
@@ -682,50 +584,62 @@
     }
   });
 
-  function resumeFromTab() {
+  document.getElementById('btnResume').addEventListener('click', () => {
     document.getElementById('tabAwayOverlay').classList.remove('show');
-    vid.play();
+    if (playerReady) player.playVideo();
+  });
+
+  // ===== ACCUMULATE REAL WATCH TIME =====
+  function flushTick() {
+    if (isPlaying && lastTickTime > 0) {
+      const delta = (Date.now() - lastTickTime) / 1000;
+      totalRealSeconds += Math.min(delta, 35);
+      lastTickTime = Date.now();
+    }
   }
 
-  // ===== SPEED CONTROL =====
-  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
-  let speedIdx = 2;
-
-  function cycleSpeed() {
-    speedIdx = (speedIdx + 1) % speeds.length;
-    currentSpeed = speeds[speedIdx];
-    vid.playbackRate = currentSpeed;
-    document.getElementById('btnSpeed').textContent = currentSpeed + 'x';
+  // ===== SEGMENT TRACKING =====
+  function getSegmentIndex(time) {
+    const dur = videoDuration || 1;
+    return Math.min(SEGMENTS - 1, Math.floor((time / dur) * SEGMENTS));
   }
 
-  // ===== VOLUME =====
-  function toggleMute() {
-    vid.muted = !vid.muted;
-    document.getElementById('volSlider').value = vid.muted ? 0 : vid.volume;
-  }
+  // ===== MAIN TRACKING INTERVAL =====
+  function startTrackingInterval() {
+    setInterval(() => {
+      if (!playerReady) return;
 
-  // ===== FULLSCREEN =====
-  function toggleFS() {
-    const pc = document.getElementById('playerContainer');
-    if (document.fullscreenElement) document.exitFullscreen();
-    else pc.requestFullscreen();
+      const ct = player.getCurrentTime();
+      const dur = player.getDuration() || 0;
+      if (dur > 0) videoDuration = dur;
+
+      // Anti-skip
+      enforceAntiSkip();
+
+      if (isPlaying) {
+        flushTick();
+        const seg = getSegmentIndex(ct);
+        segmentWatchCount[seg]++;
+        if (ct > farthestPoint) farthestPoint = ct;
+      }
+
+      // Progress bar (view-only)
+      const pct = dur > 0 ? (ct / dur) * 100 : 0;
+      progressBar.style.width = pct + '%';
+      ctrlTime.textContent = `${fmt(ct)} / ${fmt(dur)}`;
+
+      updateUI();
+
+      // Sync every 30s
+      if (Date.now() - lastSyncTime > 30000 && totalRealSeconds > 0) {
+        syncToServer();
+      }
+    }, 1000);
   }
 
   // ===== UPDATE UI =====
   function updateUI() {
-    const ct = vid.currentTime || 0;
-    const dur = vid.duration || 0;
-    const pct = dur > 0 ? (ct / dur) : 0;
-
-    // Scrubber
-    scrubberPlayed.style.width = (pct * 100) + '%';
-    scrubberThumb.style.left = (pct * 100) + '%';
-    document.getElementById('ctrlTime').textContent = `${fmt(ct)} / ${fmt(dur)}`;
-
-    // Heatmap
-    updateHeatmapColors();
-
-    // Compute unique coverage: % of segments watched at least once
+    const dur = videoDuration || 0;
     const watchedSegments = segmentWatchCount.filter(c => c > 0).length;
     const coveragePct = dur > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
 
@@ -734,7 +648,6 @@
     document.getElementById('ringFill').style.strokeDashoffset = circumference - (circumference * coveragePct / 100);
     document.getElementById('ringText').textContent = coveragePct + '%';
 
-    // Ring description
     if (coveragePct >= 90) {
       document.getElementById('engTitle').textContent = '🎉 Aula Concluída!';
       document.getElementById('engDesc').textContent = 'Parabéns! Você assistiu a aula praticamente toda. Seu comprometimento vai fazer toda a diferença.';
@@ -748,7 +661,6 @@
       document.getElementById('engDesc').textContent = 'Continue assistindo para completar a aula. Cada minuto conta!';
     }
 
-    // Ring details
     const totalPageTime = (Date.now() - pageStartTime) / 1000;
     const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
     document.getElementById('detailRealTime').textContent = '⏱ Real: ' + fmtMin(totalRealSeconds);
@@ -756,11 +668,9 @@
     document.getElementById('detailSpeed').textContent = '⚡ Velocidade: ' + currentSpeed + 'x';
     document.getElementById('detailTab').textContent = '👁 Foco: ' + focusPct + '%';
 
-    // Analytics cards
     document.getElementById('aRealTime').textContent = fmt(totalRealSeconds);
     document.getElementById('aFarthest').textContent = fmt(farthestPoint);
-    document.getElementById('aRewatches').textContent = rewatchCount;
-    document.getElementById('aSkips').textContent = forwardSkips;
+    document.getElementById('aPercent').textContent = coveragePct + '%';
   }
 
   // ===== SYNC TO SERVER =====
@@ -769,19 +679,19 @@
     if (!token) return;
 
     const watchedSegments = segmentWatchCount.filter(c => c > 0).length;
-    const coveragePct = (vid.duration || 0) > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
+    const coveragePct = videoDuration > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
     const totalPageTime = (Date.now() - pageStartTime) / 1000;
     const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
 
     const payload = {
       totalWatchedSeconds: Math.round(totalRealSeconds),
-      currentTime: Math.round(vid.currentTime || 0),
-      duration: Math.round(vid.duration || 0),
+      currentTime: Math.round(playerReady ? player.getCurrentTime() : 0),
+      duration: Math.round(videoDuration),
       percentWatched: coveragePct,
       completed: final || coveragePct >= 90,
       farthestPoint: Math.round(farthestPoint),
       forwardSkips,
-      rewatchCount,
+      rewatchCount: 0,
       playbackSpeed: currentSpeed,
       focusPercent: focusPct,
       segmentData: segmentWatchCount
@@ -800,19 +710,19 @@
   window.addEventListener('beforeunload', () => {
     flushTick();
     const watchedSegments = segmentWatchCount.filter(c => c > 0).length;
-    const coveragePct = (vid.duration || 0) > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
+    const coveragePct = videoDuration > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
     const totalPageTime = (Date.now() - pageStartTime) / 1000;
     const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
 
     const payload = JSON.stringify({
       totalWatchedSeconds: Math.round(totalRealSeconds),
-      currentTime: Math.round(vid.currentTime || 0),
-      duration: Math.round(vid.duration || 0),
+      currentTime: Math.round(playerReady ? player.getCurrentTime() : 0),
+      duration: Math.round(videoDuration),
       percentWatched: coveragePct,
       completed: coveragePct >= 90,
       farthestPoint: Math.round(farthestPoint),
       forwardSkips,
-      rewatchCount,
+      rewatchCount: 0,
       playbackSpeed: currentSpeed,
       focusPercent: focusPct,
       segmentData: segmentWatchCount
@@ -829,15 +739,14 @@
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
     switch (e.key) {
       case ' ': case 'k': e.preventDefault(); togglePlay(); break;
-      case 'ArrowLeft': vid.currentTime = Math.max(0, vid.currentTime - 10); break;
-      case 'ArrowRight': vid.currentTime = Math.min(vid.duration || 0, vid.currentTime + 10); break;
-      case 'f': toggleFS(); break;
-      case 'm': toggleMute(); break;
+      case 'f': document.getElementById('btnFullscreen').click(); break;
+      case 'm': document.getElementById('btnMute').click(); break;
+      // Arrow keys NOT mapped — no seeking allowed
     }
   });
 
   // ===== LOAD PREVIOUS SESSION =====
-  (async function loadWatchData() {
+  async function loadWatchData() {
     try {
       const res = await fetch(API_URL + '/api/analytics/my-watch', {
         headers: { 'Authorization': 'Bearer ' + token }
@@ -845,19 +754,22 @@
       if (res.ok) {
         const data = await res.json();
         if (data.totalWatchedSeconds) totalRealSeconds = data.totalWatchedSeconds;
-        if (data.farthestPoint) farthestPoint = data.farthestPoint;
+        if (data.farthestPoint) {
+          farthestPoint = data.farthestPoint;
+          maxAllowedTime = data.farthestPoint; // allow resuming from saved position
+        }
         if (data.forwardSkips) forwardSkips = data.forwardSkips;
-        if (data.rewatchCount) rewatchCount = data.rewatchCount;
         if (data.sessions) sessionCount = data.sessions + 1;
         if (data.segmentData && Array.isArray(data.segmentData) && data.segmentData.length === SEGMENTS) {
           segmentWatchCount = data.segmentData;
         }
+        if (data.currentTime && data.currentTime > 0 && playerReady) {
+          player.seekTo(data.currentTime, true);
+        }
         updateUI();
       }
     } catch (e) { /* silent */ }
-  })();
-
-  } // end of direct video mode (else block)
+  }
 
   // ===== NOTES AUTO-SAVE =====
   const notesArea = document.getElementById('notesArea');
