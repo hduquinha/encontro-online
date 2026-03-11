@@ -11,5 +11,5 @@ window.FORM_CONFIG = {
   //   YouTube:      "https://www.youtube.com/embed/SEU_VIDEO_ID"
   //   Vimeo:        "https://player.vimeo.com/video/SEU_VIDEO_ID"
   //   Arquivo direto: "https://seudominio.com/video.mp4"
-  VIDEO_URL: "https://drive.google.com/file/d/1sFw0lmpD1zxy8Lyh5WHwNVXc6anBraWi/preview" // Vídeo hospedado no Google Drive (embed)
+  VIDEO_URL: "https://www.youtube.com/embed/aNqrsC6Opc0" // Vídeo no YouTube (não-listado)
 };
