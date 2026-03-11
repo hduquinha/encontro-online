@@ -2,8 +2,9 @@
   "name": "encontro-up-online",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "node dev-server.js",
+    "dev": "node dev-server.cjs",
     "server": "cd server && node online.js"
   },
   "dependencies": {
