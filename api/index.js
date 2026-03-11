@@ -8,7 +8,8 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ===== CONFIG =====
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123'; // Senha compartilhada de acesso à aula
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Senha do painel admin
 const JWT_SECRET = process.env.JWT_SECRET || 'vercel-default-secret-change-me';
 const DB_FILE = join('/tmp', 'online-db.json');
 
@@ -33,18 +34,6 @@ function saveDB(db) {
 let db = loadDB();
 
 // ===== CRYPTO HELPERS =====
-function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${hash}`;
-}
-
-function verifyPassword(password, stored) {
-  const [salt, hash] = stored.split(':');
-  const attempt = crypto.scryptSync(password, salt, 64).toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(attempt, 'hex'));
-}
-
 function createToken(payload) {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() })).toString('base64url');
@@ -96,10 +85,10 @@ app.use(express.json({ limit: '1mb' }));
 
 // ===== AUTH ROUTES =====
 
-// Register
-app.post('/api/auth/register', (req, res) => {
+// Access (single shared password — identifies user by name + phone)
+app.post('/api/auth/access', (req, res) => {
   try {
-    db = loadDB(); // Reload in case of cold start
+    db = loadDB();
     const { name, phone, password } = req.body;
 
     if (!name || !phone || !password) {
@@ -112,59 +101,34 @@ app.post('/api/auth/register', (req, res) => {
     if (cleanPhone.length < 10 || cleanPhone.length > 11) {
       return res.status(400).json({ error: 'Telefone inválido' });
     }
-    if (password.length < 4) {
-      return res.status(400).json({ error: 'Senha deve ter no mínimo 4 caracteres' });
+
+    // Check shared access password
+    if (password !== ACCESS_PASSWORD) {
+      return res.status(401).json({ error: 'Senha de acesso incorreta' });
     }
 
-    const existing = db.users.find(u => u.phone === cleanPhone);
-    if (existing) {
-      return res.status(409).json({ error: 'Este telefone já está cadastrado. Faça login.' });
-    }
-
-    const user = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      phone: cleanPhone,
-      passwordHash: hashPassword(password),
-      registeredAt: new Date().toISOString()
-    };
-
-    db.users.push(user);
-    saveDB(db);
-
-    const token = createToken({ userId: user.id, name: user.name });
-    res.json({ token, user: { id: user.id, name: user.name, phone: user.phone } });
-  } catch (err) {
-    console.error('Register error:', err);
-    res.status(500).json({ error: 'Erro interno do servidor' });
-  }
-});
-
-// Login
-app.post('/api/auth/login', (req, res) => {
-  try {
-    db = loadDB();
-    const { phone, password } = req.body;
-
-    if (!phone || !password) {
-      return res.status(400).json({ error: 'Telefone e senha são obrigatórios' });
-    }
-
-    const cleanPhone = String(phone).replace(/\D/g, '');
-    const user = db.users.find(u => u.phone === cleanPhone);
-
+    // Find or create user by phone
+    let user = db.users.find(u => u.phone === cleanPhone);
     if (!user) {
-      return res.status(401).json({ error: 'Telefone ou senha incorretos' });
-    }
-
-    if (!verifyPassword(password, user.passwordHash)) {
-      return res.status(401).json({ error: 'Telefone ou senha incorretos' });
+      user = {
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        phone: cleanPhone,
+        registeredAt: new Date().toISOString()
+      };
+      db.users.push(user);
+      saveDB(db);
+    } else {
+      if (user.name !== name.trim()) {
+        user.name = name.trim();
+        saveDB(db);
+      }
     }
 
     const token = createToken({ userId: user.id, name: user.name });
     res.json({ token, user: { id: user.id, name: user.name, phone: user.phone } });
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('Access error:', err);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });

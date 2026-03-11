@@ -166,7 +166,7 @@
     <!-- ===== CUSTOM VIDEO PLAYER ===== -->
     <div class="player-container" id="playerContainer">
       <div class="video-area" id="videoArea">
-        <!-- COLOQUE SEU VÍDEO NA PASTA: video/aula.mp4 -->
+        <!-- Vídeo carregado via config.js VIDEO_URL ou fallback local -->
         <video id="vid" preload="metadata" playsinline>
           <source src="video/aula.mp4" type="video/mp4">
         </video>
@@ -315,6 +315,20 @@
   const user = JSON.parse(localStorage.getItem('up_user') || 'null');
   if (!token || !user) window.location.href = 'encontro-online.html';
   document.getElementById('userName').textContent = user?.name || '—';
+
+  // ===== VIDEO SOURCE (external URL from config) =====
+  (function() {
+    const videoUrl = window.FORM_CONFIG?.VIDEO_URL;
+    if (videoUrl) {
+      const vid = document.getElementById('vid');
+      vid.innerHTML = '';
+      const source = document.createElement('source');
+      source.src = videoUrl;
+      source.type = 'video/mp4';
+      vid.appendChild(source);
+      vid.load();
+    }
+  })();
 
   function logout() {
     localStorage.removeItem('up_token');
