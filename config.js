@@ -2,7 +2,7 @@
 // Ex.: https://script.google.com/macros/s/AKfycbx.../exec
 window.FORM_CONFIG = {
   SERVER_URL: "http://localhost:5174/save", // Usar o servidor Node local
-  ONLINE_SERVER_URL: "http://localhost:5175", // Servidor do encontro online
+  ONLINE_SERVER_URL: "", // Vazio = usa o mesmo domínio (relativo). Em dev local, use "http://localhost:5175"
   GAS_WEB_APP_URL: "", // Opcional: preencha após publicar o Apps Script
   SHEET_ID: "10qee1NabVgUakaZreJ9yTQ56kAz5RWk65qVo110k0Ps" // ID da sua planilha (já preenchido)
 };
