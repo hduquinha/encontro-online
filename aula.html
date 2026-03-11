@@ -166,11 +166,13 @@
     <!-- ===== CUSTOM VIDEO PLAYER ===== -->
     <div class="player-container" id="playerContainer">
       <div class="video-area" id="videoArea">
-        <!-- Vídeo carregado via config.js VIDEO_URL ou fallback local -->
-        <video id="vid" preload="metadata" playsinline>
+        <!-- Modo EMBED (Google Drive / YouTube / Vimeo) -->
+        <iframe id="vidIframe" style="display:none; width:100%; height:100%; border:none;" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+        <!-- Modo DIRETO (arquivo .mp4) -->
+        <video id="vid" preload="metadata" playsinline style="display:none;">
           <source src="video/aula.mp4" type="video/mp4">
         </video>
-        <div class="big-play" id="bigPlay">
+        <div class="big-play" id="bigPlay" style="display:none;">
           <div class="big-play-btn">
             <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </div>
@@ -182,8 +184,8 @@
         </div>
       </div>
 
-      <!-- CONTROLS -->
-      <div class="controls">
+      <!-- CONTROLS (only for direct MP4 mode) -->
+      <div class="controls" id="videoControls" style="display:none;">
         <!-- Heatmap Scrubber -->
         <div class="scrubber-wrap" id="scrubberWrap">
           <div class="heatmap-bar" id="heatmapBar"></div>
@@ -317,8 +319,21 @@
   document.getElementById('userName').textContent = user?.name || '—';
 
   // ===== VIDEO SOURCE (external URL from config) =====
-  (function() {
-    const videoUrl = window.FORM_CONFIG?.VIDEO_URL;
+  const videoUrl = window.FORM_CONFIG?.VIDEO_URL || '';
+  const isEmbedMode = /drive\.google\.com|youtube\.com|youtu\.be|vimeo\.com|\/embed|\/preview/.test(videoUrl);
+
+  if (isEmbedMode && videoUrl) {
+    // EMBED MODE: Google Drive, YouTube, Vimeo
+    document.getElementById('vidIframe').src = videoUrl;
+    document.getElementById('vidIframe').style.display = 'block';
+    document.getElementById('vid').style.display = 'none';
+    document.getElementById('videoControls').style.display = 'none';
+    document.getElementById('bigPlay').style.display = 'none';
+  } else {
+    // DIRECT MP4 MODE
+    document.getElementById('vid').style.display = 'block';
+    document.getElementById('videoControls').style.display = 'block';
+    document.getElementById('bigPlay').style.display = 'flex';
     if (videoUrl) {
       const vid = document.getElementById('vid');
       vid.innerHTML = '';
@@ -328,7 +343,7 @@
       vid.appendChild(source);
       vid.load();
     }
-  })();
+  }
 
   function logout() {
     localStorage.removeItem('up_token');
@@ -364,7 +379,7 @@
   let pageStartTime = Date.now();
   let lastSyncTime = 0;
 
-  // ===== FORMAT HELPERS =====
+  // ===== FORMAT HELPERS (shared) =====
   function fmt(s) {
     s = Math.floor(Math.max(0, s));
     const h = Math.floor(s / 3600);
@@ -381,6 +396,130 @@
     const m = Math.floor(s / 60);
     return m < 60 ? m + ' min' : Math.floor(m/60) + 'h ' + (m%60) + 'min';
   }
+
+  // ===== EMBED MODE: simplified page-time tracking =====
+  if (isEmbedMode) {
+    let embedStartTime = Date.now();
+    let embedTabBlurTotal = 0;
+    let embedTabBlurStart = 0;
+    let embedFocusSeconds = 0;
+    let embedSynced = false;
+
+    function getEmbedFocusSeconds() {
+      const totalPage = (Date.now() - embedStartTime) / 1000;
+      const blurSec = (embedTabBlurTotal + (embedTabBlurStart > 0 ? Date.now() - embedTabBlurStart : 0)) / 1000;
+      return Math.max(0, totalPage - blurSec);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        embedTabBlurStart = Date.now();
+      } else {
+        if (embedTabBlurStart > 0) {
+          embedTabBlurTotal += Date.now() - embedTabBlurStart;
+          embedTabBlurStart = 0;
+        }
+      }
+    });
+
+    // Update UI every 5s in embed mode
+    setInterval(() => {
+      embedFocusSeconds = getEmbedFocusSeconds();
+      totalRealSeconds = embedFocusSeconds;
+
+      // Update engagement ring
+      const totalPage = (Date.now() - embedStartTime) / 1000;
+      const focusPct = totalPage > 0 ? Math.round(((totalPage - embedTabBlurTotal / 1000) / totalPage) * 100) : 100;
+      document.getElementById('detailRealTime').textContent = '⏱ Tempo na página: ' + fmtMin(totalPage);
+      document.getElementById('detailSessions').textContent = '🔄 Sessões: ' + sessionCount;
+      document.getElementById('detailSpeed').textContent = '⚡ Velocidade: 1x';
+      document.getElementById('detailTab').textContent = '👁 Foco: ' + focusPct + '%';
+      document.getElementById('aRealTime').textContent = fmt(embedFocusSeconds);
+
+      // Ring - estimate based on focus time (assume ~60min video)
+      const estimatedDuration = 60 * 60; // 1 hour estimate
+      const estimatedPct = Math.min(100, Math.round((embedFocusSeconds / estimatedDuration) * 100));
+      const circumference = 314.16;
+      document.getElementById('ringFill').style.strokeDashoffset = circumference - (circumference * estimatedPct / 100);
+      document.getElementById('ringText').textContent = fmtMin(embedFocusSeconds);
+
+      if (embedFocusSeconds > 300) {
+        document.getElementById('engTitle').textContent = '📺 Assistindo...';
+        document.getElementById('engDesc').textContent = 'Acompanhando o encontro. Continue focado para absorver o conteúdo!';
+      }
+
+      // Sync every 30s
+      if (Date.now() - lastSyncTime > 30000 && embedFocusSeconds > 0) {
+        syncEmbedToServer();
+      }
+    }, 5000);
+
+    async function syncEmbedToServer() {
+      lastSyncTime = Date.now();
+      if (!token) return;
+      const totalPage = (Date.now() - embedStartTime) / 1000;
+      const focusPct = totalPage > 0 ? Math.round(((totalPage - embedTabBlurTotal / 1000) / totalPage) * 100) : 100;
+      const payload = {
+        totalWatchedSeconds: Math.round(getEmbedFocusSeconds()),
+        currentTime: 0,
+        duration: 0,
+        percentWatched: 0,
+        completed: false,
+        farthestPoint: 0,
+        forwardSkips: 0,
+        rewatchCount: 0,
+        playbackSpeed: 1,
+        focusPercent: focusPct,
+        segmentData: []
+      };
+      try {
+        await fetch(API_URL + '/api/analytics/watch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) { /* silent */ }
+    }
+
+    // Beacon on unload (embed mode)
+    window.addEventListener('beforeunload', () => {
+      const totalPage = (Date.now() - embedStartTime) / 1000;
+      const focusPct = totalPage > 0 ? Math.round(((totalPage - embedTabBlurTotal / 1000) / totalPage) * 100) : 100;
+      const payload = JSON.stringify({
+        totalWatchedSeconds: Math.round(getEmbedFocusSeconds()),
+        currentTime: 0, duration: 0, percentWatched: 0, completed: false,
+        farthestPoint: 0, forwardSkips: 0, rewatchCount: 0, playbackSpeed: 1,
+        focusPercent: focusPct, segmentData: []
+      });
+      navigator.sendBeacon(
+        API_URL + '/api/analytics/watch-beacon?token=' + encodeURIComponent(token),
+        new Blob([payload], { type: 'application/json' })
+      );
+    });
+
+    // Load previous session data for embed mode
+    (async function loadEmbedWatchData() {
+      try {
+        const res = await fetch(API_URL + '/api/analytics/my-watch', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.totalWatchedSeconds) totalRealSeconds = data.totalWatchedSeconds;
+          if (data.sessions) sessionCount = data.sessions + 1;
+          document.getElementById('aRealTime').textContent = fmt(totalRealSeconds);
+        }
+      } catch (e) { /* silent */ }
+    })();
+
+    // Hide heatmap and detailed cards in embed mode (can't track video position)
+    document.querySelector('.heatmap-legend').style.display = 'none';
+    document.getElementById('aFarthest').parentElement.style.display = 'none';
+    document.getElementById('aRewatches').parentElement.style.display = 'none';
+    document.getElementById('aSkips').parentElement.style.display = 'none';
+
+  } else {
+  // ===== DIRECT VIDEO MODE: full analytics =====
 
   // ===== HEATMAP =====
   function buildHeatmap() {
@@ -697,22 +836,6 @@
     }
   });
 
-  // ===== NOTES AUTO-SAVE =====
-  const notesArea = document.getElementById('notesArea');
-  const notesSaved = document.getElementById('notesSaved');
-  let notesTimeout = null;
-  const savedNotes = localStorage.getItem('up_notes_' + (user?.id || ''));
-  if (savedNotes) notesArea.value = savedNotes;
-
-  notesArea.addEventListener('input', () => {
-    clearTimeout(notesTimeout);
-    notesTimeout = setTimeout(() => {
-      localStorage.setItem('up_notes_' + (user?.id || ''), notesArea.value);
-      notesSaved.classList.add('show');
-      setTimeout(() => notesSaved.classList.remove('show'), 2000);
-    }, 500);
-  });
-
   // ===== LOAD PREVIOUS SESSION =====
   (async function loadWatchData() {
     try {
@@ -733,6 +856,25 @@
       }
     } catch (e) { /* silent */ }
   })();
+
+  } // end of direct video mode (else block)
+
+  // ===== NOTES AUTO-SAVE =====
+  const notesArea = document.getElementById('notesArea');
+  const notesSaved = document.getElementById('notesSaved');
+  let notesTimeout = null;
+  const savedNotes = localStorage.getItem('up_notes_' + (user?.id || ''));
+  if (savedNotes) notesArea.value = savedNotes;
+
+  notesArea.addEventListener('input', () => {
+    clearTimeout(notesTimeout);
+    notesTimeout = setTimeout(() => {
+      localStorage.setItem('up_notes_' + (user?.id || ''), notesArea.value);
+      notesSaved.classList.add('show');
+      setTimeout(() => notesSaved.classList.remove('show'), 2000);
+    }, 500);
+  });
+
   </script>
 </body>
 </html>
