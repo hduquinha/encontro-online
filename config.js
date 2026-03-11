@@ -11,5 +11,5 @@ window.FORM_CONFIG = {
   //   YouTube:      "https://www.youtube.com/embed/SEU_VIDEO_ID"
   //   Vimeo:        "https://player.vimeo.com/video/SEU_VIDEO_ID"
   //   Arquivo direto: "https://seudominio.com/video.mp4"
-  VIDEO_URL: "" // Preencha com a URL do vídeo hospedado externamente
+  VIDEO_URL: "https://drive.google.com/uc?export=download&id=1sFw0lmpD1zxy8Lyh5WHwNVXc6anBraWi" // Vídeo hospedado no Google Drive
 };
