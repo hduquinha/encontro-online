@@ -5,10 +5,11 @@
   "type": "module",
   "main": "online.js",
   "scripts": {
-    "start": "node online.js"
+    "start": "node --env-file=../.env online.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "pg": "^8.20.0"
   }
 }

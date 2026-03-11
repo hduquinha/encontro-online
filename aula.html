@@ -630,8 +630,8 @@
 
       updateUI();
 
-      // Sync every 30s
-      if (Date.now() - lastSyncTime > 30000 && totalRealSeconds > 0) {
+      // Sync every 5s (near real-time for dashboard)
+      if (Date.now() - lastSyncTime > 5000 && totalRealSeconds > 0) {
         syncToServer();
       }
     }, 1000);

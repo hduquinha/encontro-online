@@ -1,37 +1,60 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import pg from 'pg';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const { Pool } = pg;
 
 // ===== CONFIG =====
-const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123'; // Senha compartilhada de acesso à aula
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Senha do painel admin
+const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const JWT_SECRET = process.env.JWT_SECRET || 'vercel-default-secret-change-me';
-const DB_FILE = join('/tmp', 'online-db.json');
+const DATABASE_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=[^&]*/g, '');
 
-// ===== DATABASE (JSON file in /tmp — NOT persistent on Vercel!) =====
-// WARNING: /tmp is ephemeral on Vercel. Data will be lost between cold starts.
-// For production, use a real database (e.g., Vercel KV, Supabase, PlanetScale).
-function loadDB() {
+// ===== DATABASE (PostgreSQL — Aiven) =====
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000
+});
+
+async function initDB() {
+  const client = await pool.connect();
   try {
-    if (existsSync(DB_FILE)) {
-      return JSON.parse(readFileSync(DB_FILE, 'utf-8'));
-    }
-  } catch (e) {
-    console.error('Erro ao ler DB:', e.message);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS online_users (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        phone VARCHAR(20) UNIQUE NOT NULL,
+        registered_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS online_watch_data (
+        user_id UUID PRIMARY KEY REFERENCES online_users(id),
+        total_watched_seconds REAL DEFAULT 0,
+        percent_watched REAL DEFAULT 0,
+        current_position REAL DEFAULT 0,
+        duration REAL DEFAULT 0,
+        completed BOOLEAN DEFAULT FALSE,
+        last_watched_at TIMESTAMPTZ DEFAULT NOW(),
+        sessions INTEGER DEFAULT 1,
+        farthest_point REAL DEFAULT 0,
+        forward_skips INTEGER DEFAULT 0,
+        rewatch_count INTEGER DEFAULT 0,
+        playback_speed REAL DEFAULT 1,
+        focus_percent REAL DEFAULT 100,
+        segment_data JSONB DEFAULT '[]'
+      );
+    `);
+    console.log('Tabelas PostgreSQL criadas/verificadas com sucesso');
+  } finally {
+    client.release();
   }
-  return { users: [], watchData: [] };
 }
 
-function saveDB(db) {
-  writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
-}
-
-let db = loadDB();
+initDB().catch(err => console.error('Erro ao inicializar DB:', err));
 
 // ===== CRYPTO HELPERS =====
 function createToken(payload) {
@@ -84,11 +107,8 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
 // ===== AUTH ROUTES =====
-
-// Access (single shared password — identifies user by name + phone)
-app.post('/api/auth/access', (req, res) => {
+app.post('/api/auth/access', async (req, res) => {
   try {
-    db = loadDB();
     const { name, phone, password } = req.body;
 
     if (!name || !phone || !password) {
@@ -101,27 +121,25 @@ app.post('/api/auth/access', (req, res) => {
     if (cleanPhone.length < 10 || cleanPhone.length > 11) {
       return res.status(400).json({ error: 'Telefone inválido' });
     }
-
-    // Check shared access password
     if (password !== ACCESS_PASSWORD) {
       return res.status(401).json({ error: 'Senha de acesso incorreta' });
     }
 
-    // Find or create user by phone
-    let user = db.users.find(u => u.phone === cleanPhone);
-    if (!user) {
-      user = {
-        id: crypto.randomUUID(),
-        name: name.trim(),
-        phone: cleanPhone,
-        registeredAt: new Date().toISOString()
-      };
-      db.users.push(user);
-      saveDB(db);
+    let result = await pool.query('SELECT id, name, phone FROM online_users WHERE phone = $1', [cleanPhone]);
+    let user;
+
+    if (result.rows.length === 0) {
+      const id = crypto.randomUUID();
+      await pool.query(
+        'INSERT INTO online_users (id, name, phone, registered_at) VALUES ($1, $2, $3, NOW())',
+        [id, name.trim(), cleanPhone]
+      );
+      user = { id, name: name.trim(), phone: cleanPhone };
     } else {
+      user = result.rows[0];
       if (user.name !== name.trim()) {
+        await pool.query('UPDATE online_users SET name = $1 WHERE id = $2', [name.trim(), user.id]);
         user.name = name.trim();
-        saveDB(db);
       }
     }
 
@@ -135,53 +153,61 @@ app.post('/api/auth/access', (req, res) => {
 
 // ===== ANALYTICS ROUTES =====
 
-app.post('/api/analytics/watch', authMiddleware, (req, res) => {
-  try {
-    db = loadDB();
-    const b = req.body;
-    let existing = db.watchData.find(w => w.userId === req.userId);
+async function upsertWatchData(userId, b) {
+  const result = await pool.query('SELECT * FROM online_watch_data WHERE user_id = $1', [userId]);
 
-    if (existing) {
-      existing.totalWatchedSeconds = Math.max(existing.totalWatchedSeconds || 0, b.totalWatchedSeconds || 0);
-      existing.percentWatched = Math.max(existing.percentWatched || 0, b.percentWatched || 0);
-      existing.currentTime = b.currentTime ?? existing.currentTime;
-      existing.duration = b.duration || existing.duration;
-      existing.completed = existing.completed || !!b.completed;
-      existing.lastWatchedAt = new Date().toISOString();
-      existing.farthestPoint = Math.max(existing.farthestPoint || 0, b.farthestPoint || 0);
-      existing.forwardSkips = Math.max(existing.forwardSkips || 0, b.forwardSkips || 0);
-      existing.rewatchCount = Math.max(existing.rewatchCount || 0, b.rewatchCount || 0);
-      existing.playbackSpeed = b.playbackSpeed || existing.playbackSpeed || 1;
-      existing.focusPercent = b.focusPercent ?? existing.focusPercent ?? 100;
-      if (Array.isArray(b.segmentData) && b.segmentData.length > 0) {
-        if (!existing.segmentData || existing.segmentData.length !== b.segmentData.length) {
-          existing.segmentData = b.segmentData;
-        } else {
-          for (let i = 0; i < b.segmentData.length; i++) {
-            existing.segmentData[i] = Math.max(existing.segmentData[i] || 0, b.segmentData[i] || 0);
-          }
+  if (result.rows.length > 0) {
+    const e = result.rows[0];
+    const totalWatchedSeconds = Math.max(e.total_watched_seconds || 0, b.totalWatchedSeconds || 0);
+    const percentWatched = Math.max(e.percent_watched || 0, b.percentWatched || 0);
+    const currentTime = b.currentTime ?? e.current_position;
+    const duration = b.duration || e.duration;
+    const completed = e.completed || !!b.completed;
+    const farthestPoint = Math.max(e.farthest_point || 0, b.farthestPoint || 0);
+    const forwardSkips = Math.max(e.forward_skips || 0, b.forwardSkips || 0);
+    const rewatchCount = Math.max(e.rewatch_count || 0, b.rewatchCount || 0);
+    const playbackSpeed = b.playbackSpeed || e.playback_speed || 1;
+    const focusPercent = b.focusPercent ?? e.focus_percent ?? 100;
+
+    let segmentData = e.segment_data || [];
+    if (Array.isArray(b.segmentData) && b.segmentData.length > 0) {
+      if (!Array.isArray(segmentData) || segmentData.length !== b.segmentData.length) {
+        segmentData = b.segmentData;
+      } else {
+        for (let i = 0; i < b.segmentData.length; i++) {
+          segmentData[i] = Math.max(segmentData[i] || 0, b.segmentData[i] || 0);
         }
       }
-    } else {
-      db.watchData.push({
-        userId: req.userId,
-        totalWatchedSeconds: b.totalWatchedSeconds || 0,
-        currentTime: b.currentTime || 0,
-        duration: b.duration || 0,
-        percentWatched: b.percentWatched || 0,
-        completed: !!b.completed,
-        lastWatchedAt: new Date().toISOString(),
-        sessions: 1,
-        farthestPoint: b.farthestPoint || 0,
-        forwardSkips: b.forwardSkips || 0,
-        rewatchCount: b.rewatchCount || 0,
-        playbackSpeed: b.playbackSpeed || 1,
-        focusPercent: b.focusPercent ?? 100,
-        segmentData: Array.isArray(b.segmentData) ? b.segmentData : []
-      });
     }
 
-    saveDB(db);
+    await pool.query(`
+      UPDATE online_watch_data SET
+        total_watched_seconds = $1, percent_watched = $2, current_position = $3,
+        duration = $4, completed = $5, last_watched_at = NOW(),
+        farthest_point = $6, forward_skips = $7, rewatch_count = $8,
+        playback_speed = $9, focus_percent = $10, segment_data = $11
+      WHERE user_id = $12
+    `, [totalWatchedSeconds, percentWatched, currentTime, duration, completed,
+        farthestPoint, forwardSkips, rewatchCount, playbackSpeed, focusPercent,
+        JSON.stringify(segmentData), userId]);
+  } else {
+    await pool.query(`
+      INSERT INTO online_watch_data
+        (user_id, total_watched_seconds, percent_watched, current_position, duration,
+         completed, last_watched_at, sessions, farthest_point, forward_skips,
+         rewatch_count, playback_speed, focus_percent, segment_data)
+      VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7,$8,$9,$10,$11,$12,$13)
+    `, [userId, b.totalWatchedSeconds || 0, b.percentWatched || 0,
+        b.currentTime || 0, b.duration || 0, !!b.completed, 1,
+        b.farthestPoint || 0, b.forwardSkips || 0, b.rewatchCount || 0,
+        b.playbackSpeed || 1, b.focusPercent ?? 100,
+        JSON.stringify(Array.isArray(b.segmentData) ? b.segmentData : [])]);
+  }
+}
+
+app.post('/api/analytics/watch', authMiddleware, async (req, res) => {
+  try {
+    await upsertWatchData(req.userId, req.body);
     res.json({ ok: true });
   } catch (err) {
     console.error('Watch analytics error:', err);
@@ -189,69 +215,48 @@ app.post('/api/analytics/watch', authMiddleware, (req, res) => {
   }
 });
 
-app.post('/api/analytics/watch-beacon', (req, res) => {
+app.post('/api/analytics/watch-beacon', async (req, res) => {
   try {
-    db = loadDB();
     const token = req.query.token;
     const payload = verifyToken(token);
     if (!payload || !payload.userId) {
       return res.status(401).json({ error: 'Token inválido' });
     }
-
-    const b = req.body;
-    let existing = db.watchData.find(w => w.userId === payload.userId);
-
-    if (existing) {
-      existing.totalWatchedSeconds = Math.max(existing.totalWatchedSeconds || 0, b.totalWatchedSeconds || 0);
-      existing.percentWatched = Math.max(existing.percentWatched || 0, b.percentWatched || 0);
-      existing.currentTime = b.currentTime ?? existing.currentTime;
-      existing.duration = b.duration || existing.duration;
-      existing.completed = existing.completed || !!b.completed;
-      existing.lastWatchedAt = new Date().toISOString();
-      existing.farthestPoint = Math.max(existing.farthestPoint || 0, b.farthestPoint || 0);
-      existing.forwardSkips = Math.max(existing.forwardSkips || 0, b.forwardSkips || 0);
-      existing.rewatchCount = Math.max(existing.rewatchCount || 0, b.rewatchCount || 0);
-      existing.playbackSpeed = b.playbackSpeed || existing.playbackSpeed || 1;
-      existing.focusPercent = b.focusPercent ?? existing.focusPercent ?? 100;
-      if (Array.isArray(b.segmentData) && b.segmentData.length > 0) {
-        if (!existing.segmentData || existing.segmentData.length !== b.segmentData.length) {
-          existing.segmentData = b.segmentData;
-        } else {
-          for (let i = 0; i < b.segmentData.length; i++) {
-            existing.segmentData[i] = Math.max(existing.segmentData[i] || 0, b.segmentData[i] || 0);
-          }
-        }
-      }
-    } else {
-      db.watchData.push({
-        userId: payload.userId,
-        totalWatchedSeconds: b.totalWatchedSeconds || 0,
-        currentTime: b.currentTime || 0,
-        duration: b.duration || 0,
-        percentWatched: b.percentWatched || 0,
-        completed: !!b.completed,
-        lastWatchedAt: new Date().toISOString(),
-        sessions: 1,
-        farthestPoint: b.farthestPoint || 0,
-        forwardSkips: b.forwardSkips || 0,
-        rewatchCount: b.rewatchCount || 0,
-        playbackSpeed: b.playbackSpeed || 1,
-        focusPercent: b.focusPercent ?? 100,
-        segmentData: Array.isArray(b.segmentData) ? b.segmentData : []
-      });
-    }
-
-    saveDB(db);
+    await upsertWatchData(payload.userId, req.body);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Erro' });
   }
 });
 
-app.get('/api/analytics/my-watch', authMiddleware, (req, res) => {
-  db = loadDB();
-  const data = db.watchData.find(w => w.userId === req.userId);
-  res.json(data || { totalWatchedSeconds: 0, percentWatched: 0 });
+app.get('/api/analytics/my-watch', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM online_watch_data WHERE user_id = $1', [req.userId]);
+    if (result.rows.length > 0) {
+      const w = result.rows[0];
+      res.json({
+        userId: w.user_id,
+        totalWatchedSeconds: w.total_watched_seconds,
+        percentWatched: w.percent_watched,
+        currentTime: w.current_position,
+        duration: w.duration,
+        completed: w.completed,
+        lastWatchedAt: w.last_watched_at,
+        sessions: w.sessions,
+        farthestPoint: w.farthest_point,
+        forwardSkips: w.forward_skips,
+        rewatchCount: w.rewatch_count,
+        playbackSpeed: w.playback_speed,
+        focusPercent: w.focus_percent,
+        segmentData: w.segment_data || []
+      });
+    } else {
+      res.json({ totalWatchedSeconds: 0, percentWatched: 0 });
+    }
+  } catch (err) {
+    console.error('My watch error:', err);
+    res.status(500).json({ error: 'Erro ao buscar dados' });
+  }
 });
 
 // ===== ADMIN ROUTES =====
@@ -265,29 +270,36 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ token });
 });
 
-app.get('/api/admin/dashboard', adminMiddleware, (req, res) => {
+app.get('/api/admin/dashboard', adminMiddleware, async (req, res) => {
   try {
-    db = loadDB();
-    const users = db.users.map(u => {
-      const watch = db.watchData.find(w => w.userId === u.id) || {};
-      return {
-        id: u.id,
-        name: u.name,
-        phone: u.phone,
-        registeredAt: u.registeredAt,
-        totalWatchedSeconds: watch.totalWatchedSeconds || 0,
-        percentWatched: watch.percentWatched || 0,
-        completed: watch.completed || false,
-        lastWatchedAt: watch.lastWatchedAt || null,
-        sessions: watch.sessions || 0,
-        farthestPoint: watch.farthestPoint || 0,
-        forwardSkips: watch.forwardSkips || 0,
-        rewatchCount: watch.rewatchCount || 0,
-        playbackSpeed: watch.playbackSpeed || 1,
-        focusPercent: watch.focusPercent ?? 100,
-        segmentData: watch.segmentData || []
-      };
-    });
+    const result = await pool.query(`
+      SELECT u.id, u.name, u.phone, u.registered_at,
+             w.total_watched_seconds, w.percent_watched, w.completed,
+             w.last_watched_at, w.sessions, w.farthest_point,
+             w.forward_skips, w.rewatch_count, w.playback_speed,
+             w.focus_percent, w.segment_data
+      FROM online_users u
+      LEFT JOIN online_watch_data w ON w.user_id = u.id
+      ORDER BY u.registered_at DESC
+    `);
+
+    const users = result.rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      registeredAt: r.registered_at,
+      totalWatchedSeconds: r.total_watched_seconds || 0,
+      percentWatched: r.percent_watched || 0,
+      completed: r.completed || false,
+      lastWatchedAt: r.last_watched_at || null,
+      sessions: r.sessions || 0,
+      farthestPoint: r.farthest_point || 0,
+      forwardSkips: r.forward_skips || 0,
+      rewatchCount: r.rewatch_count || 0,
+      playbackSpeed: r.playback_speed || 1,
+      focusPercent: r.focus_percent ?? 100,
+      segmentData: r.segment_data || []
+    }));
 
     const totalUsers = users.length;
     const watchers = users.filter(u => u.totalWatchedSeconds > 0);
@@ -307,10 +319,113 @@ app.get('/api/admin/dashboard', adminMiddleware, (req, res) => {
   }
 });
 
+// ===== ATTENDANCE REPORT (para integração com dashboard externo) =====
+app.get('/api/admin/attendance-report', adminMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.name, u.phone, u.registered_at,
+             w.total_watched_seconds, w.percent_watched, w.completed,
+             w.last_watched_at, w.sessions, w.farthest_point, w.duration,
+             w.forward_skips, w.rewatch_count, w.playback_speed,
+             w.focus_percent, w.segment_data
+      FROM online_users u
+      LEFT JOIN online_watch_data w ON w.user_id = u.id
+      ORDER BY u.registered_at DESC
+    `);
+
+    const participants = [];
+    const attendance = [];
+    const engagement = [];
+
+    for (const r of result.rows) {
+      participants.push({
+        id: r.id,
+        name: r.name,
+        phone: r.phone,
+        registeredAt: r.registered_at
+      });
+
+      let status = 'nao_assistiu';
+      if (r.total_watched_seconds > 0 || r.percent_watched > 0 || r.completed) {
+        if (r.completed || (r.percent_watched || 0) >= 90) status = 'concluido';
+        else if ((r.percent_watched || 0) > 0) status = 'assistindo';
+        else if (r.total_watched_seconds > 0) status = 'iniciou';
+      }
+
+      attendance.push({
+        userId: r.id,
+        phone: r.phone,
+        status,
+        percentWatched: r.percent_watched || 0,
+        totalWatchedSeconds: r.total_watched_seconds || 0,
+        completed: r.completed || false,
+        firstAccessAt: r.registered_at,
+        lastAccessAt: r.last_watched_at || null
+      });
+
+      engagement.push({
+        userId: r.id,
+        phone: r.phone,
+        sessions: r.sessions || 0,
+        farthestPoint: r.farthest_point || 0,
+        duration: r.duration || 0,
+        forwardSkips: r.forward_skips || 0,
+        rewatchCount: r.rewatch_count || 0,
+        playbackSpeed: r.playback_speed || 1,
+        focusPercent: r.focus_percent ?? 100,
+        segmentData: r.segment_data || []
+      });
+    }
+
+    const watchers = attendance.filter(a => a.totalWatchedSeconds > 0);
+    const summary = {
+      totalRegistered: participants.length,
+      totalWatched: watchers.length,
+      totalCompleted: attendance.filter(a => a.status === 'concluido').length,
+      totalWatching: attendance.filter(a => a.status === 'assistindo').length,
+      totalStarted: attendance.filter(a => a.status === 'iniciou').length,
+      totalNotWatched: attendance.filter(a => a.status === 'nao_assistiu').length,
+      avgPercentWatched: watchers.length > 0
+        ? Math.round(watchers.reduce((s, a) => s + a.percentWatched, 0) / watchers.length)
+        : 0,
+      avgWatchTimeSeconds: watchers.length > 0
+        ? Math.round(watchers.reduce((s, a) => s + a.totalWatchedSeconds, 0) / watchers.length)
+        : 0,
+      avgFocusPercent: watchers.length > 0
+        ? Math.round(watchers.reduce((s, a) => {
+            const eng = engagement.find(e => e.userId === a.userId);
+            return s + (eng ? eng.focusPercent : 0);
+          }, 0) / watchers.length)
+        : 0,
+      generatedAt: new Date().toISOString()
+    };
+
+    res.json({
+      _meta: {
+        description: 'Relatório de presença do Encontro Online — use phone como chave para associar com inscritos',
+        linkField: 'phone',
+        tables: ['participants', 'attendance', 'engagement', 'summary']
+      },
+      participants,
+      attendance,
+      engagement,
+      summary
+    });
+  } catch (err) {
+    console.error('Attendance report error:', err);
+    res.status(500).json({ error: 'Erro ao gerar relatório de presença' });
+  }
+});
+
 // ===== HEALTH =====
-app.get('/api/health', (req, res) => {
-  db = loadDB();
-  res.json({ ok: true, users: db.users.length, watchRecords: db.watchData.length });
+app.get('/api/health', async (req, res) => {
+  try {
+    const users = await pool.query('SELECT COUNT(*) FROM online_users');
+    const watch = await pool.query('SELECT COUNT(*) FROM online_watch_data');
+    res.json({ ok: true, users: parseInt(users.rows[0].count), watchRecords: parseInt(watch.rows[0].count) });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
 });
 
 // Export for Vercel
