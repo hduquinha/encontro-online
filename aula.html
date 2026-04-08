@@ -33,6 +33,11 @@
     body.player-pseudo-fullscreen {
       background: #000;
     }
+    body.player-pseudo-fullscreen {
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
 
     /* NAV */
     .nav { padding: 14px 0; border-bottom: 1px solid #1e2627; background: rgba(0,0,0,.5); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
@@ -49,14 +54,13 @@
     .btn-logout:hover { background: #1d4045; color: #fff; }
 
     .main { max-width: 960px; margin: 0 auto; padding: 24px; }
+    body.player-pseudo-fullscreen .main { max-width: none; width: 100%; padding: 0; }
 
     /* ===== CUSTOM VIDEO PLAYER ===== */
     .player-container { margin-bottom: 24px; border-radius: 20px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); background: #000; position: relative; }
-    body.player-fullscreen .player-container,
-    body.player-pseudo-fullscreen .player-container { width: 100%; height: 100%; border-radius: 0; border: none; box-shadow: none; }
+    body.player-fullscreen .player-container { width: 100%; height: 100%; border-radius: 0; border: none; box-shadow: none; }
     .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; }
-    body.player-fullscreen .video-area,
-    body.player-pseudo-fullscreen .video-area { height: calc(100vh - 88px); aspect-ratio: auto; }
+    body.player-fullscreen .video-area { height: calc(100dvh - 88px); aspect-ratio: auto; }
     .video-area iframe { width: 100%; height: 100%; display: block; border: none; }
     .video-poster { position: absolute; inset: 0; z-index: 1; background: #020607 center / cover no-repeat; opacity: 1; transition: opacity .24s ease; }
     .video-poster.hidden { opacity: 0; pointer-events: none; }
@@ -138,6 +142,41 @@
     .volume-value { min-width: 40px; font-size: .72rem; font-weight: 700; color: #9bd5da; text-align: right; font-variant-numeric: tabular-nums; }
     .viewer-insights { display: none !important; }
 
+    body.player-pseudo-fullscreen .nav,
+    body.player-pseudo-fullscreen footer {
+      display: none;
+    }
+    body.player-pseudo-fullscreen .player-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      width: 100%;
+      height: 100dvh;
+      margin: 0;
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+    }
+    body.player-pseudo-fullscreen .video-area {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: auto;
+      aspect-ratio: auto;
+    }
+    body.player-pseudo-fullscreen .controls {
+      flex: 0 0 auto;
+      position: relative;
+      z-index: 20;
+      background: linear-gradient(180deg, rgba(4, 10, 11, .92), #091314);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    body.player-pseudo-fullscreen .controls-row {
+      padding-left: max(14px, env(safe-area-inset-left, 0));
+      padding-right: max(14px, env(safe-area-inset-right, 0));
+    }
+
     /* ===== ANALYTICS PANEL ===== */
     .analytics-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px; }
     .a-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 16px 18px; position: relative; overflow: hidden; }
@@ -203,6 +242,42 @@
       .quality-btn { width: 100%; }
       .volume-control { order: -1; flex: 1 1 100%; }
       .volume-slider { flex: 1; width: auto; }
+
+      body.player-pseudo-fullscreen .controls-row {
+        gap: 10px;
+        padding: 10px max(12px, env(safe-area-inset-left, 0)) calc(10px + env(safe-area-inset-bottom, 0)) max(12px, env(safe-area-inset-right, 0));
+      }
+      body.player-pseudo-fullscreen .live-status {
+        width: 100%;
+        gap: 6px;
+      }
+      body.player-pseudo-fullscreen .ctrl-time {
+        font-size: .72rem;
+      }
+      body.player-pseudo-fullscreen .player-actions {
+        width: 100%;
+        gap: 6px;
+      }
+      body.player-pseudo-fullscreen .quality-menu {
+        flex: 0 0 auto;
+      }
+      body.player-pseudo-fullscreen .quality-btn {
+        min-width: 82px;
+        min-height: 42px;
+      }
+      body.player-pseudo-fullscreen .volume-control {
+        order: 0;
+        flex: 1 1 auto;
+        min-width: 0;
+        padding-inline: 10px;
+      }
+      body.player-pseudo-fullscreen .volume-value {
+        min-width: 34px;
+      }
+      body.player-pseudo-fullscreen .action-btn.icon-btn {
+        width: 42px;
+        height: 42px;
+      }
     }
   </style>
 </head>
@@ -516,6 +591,7 @@
   let playerBootStatus = 'idle';
   let playerBootTimeoutId = 0;
   let pseudoFullscreen = false;
+  let pseudoFullscreenScrollY = 0;
 
   function getPlayerSurfaceElement() {
     return document.getElementById('ytPlayer');
@@ -648,8 +724,24 @@
     return Boolean(getFullscreenElement()) || isPseudoFullscreenActive();
   }
 
+  function shouldPreferPseudoFullscreen() {
+    const hasTouch = window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+    const isMobileViewport = window.matchMedia?.('(max-width: 900px)').matches;
+    return Boolean(hasTouch && isMobileViewport);
+  }
+
   function setPseudoFullscreen(active) {
+    if (pseudoFullscreen === active) return;
     pseudoFullscreen = active;
+    if (active) {
+      pseudoFullscreenScrollY = window.scrollY || window.pageYOffset || 0;
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, pseudoFullscreenScrollY);
+    }
     document.body.classList.toggle('player-pseudo-fullscreen', active);
   }
 
@@ -664,6 +756,10 @@
   }
 
   async function requestPlayerFullscreen() {
+    if (shouldPreferPseudoFullscreen()) {
+      setPseudoFullscreen(true);
+      return;
+    }
     const target = getPreferredFullscreenTarget();
     if (target.requestFullscreen) return target.requestFullscreen();
     if (target.webkitRequestFullscreen) return target.webkitRequestFullscreen();
