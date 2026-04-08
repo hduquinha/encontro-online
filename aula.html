@@ -187,14 +187,15 @@
     }
     body.player-controls-hidden.player-pseudo-fullscreen .controls,
     body.player-controls-hidden.player-fullscreen .controls {
-      transform: translateY(calc(100% - 6px - env(safe-area-inset-bottom, 0)));
-      opacity: .14;
+      transform: translateY(calc(100% - 4px));
+      opacity: .02;
       pointer-events: none;
+      background: linear-gradient(180deg, rgba(4, 10, 11, 0), rgba(4, 10, 11, .02));
     }
     body.player-controls-hidden.player-pseudo-fullscreen .controls-row,
     body.player-controls-hidden.player-fullscreen .controls-row {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(18px);
     }
     body.player-controls-hidden.player-pseudo-fullscreen .fullscreen-exit-btn,
     body.player-controls-hidden.player-fullscreen .fullscreen-exit-btn {
