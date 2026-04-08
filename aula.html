@@ -127,6 +127,15 @@
     .quality-option { display: block; width: 100%; background: none; border: none; color: #9bd5da; padding: 6px 14px; font-size: .7rem; font-weight: 600; cursor: pointer; text-align: left; font-family: inherit; }
     .quality-option:hover { background: #1a2e30; color: #fff; }
     .quality-option.active { color: var(--primary); }
+    .volume-menu { position: relative; display: inline-block; }
+    .volume-btn { min-width: 110px; }
+    .volume-dropdown { display: none; position: absolute; right: 0; bottom: calc(100% + 8px); width: 230px; padding: 14px; background: #0f1a1b; border: 1px solid #204347; border-radius: 14px; z-index: 60; box-shadow: 0 18px 40px -24px rgba(0,0,0,.85); }
+    .volume-dropdown.show { display: block; }
+    .volume-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-size: .72rem; font-weight: 700; color: #b8dadd; }
+    .volume-row { display: flex; align-items: center; gap: 10px; }
+    .volume-slider { flex: 1; accent-color: var(--primary); cursor: pointer; }
+    .mute-btn { border: 1px solid #21484d; background: #132326; color: #d2fcff; padding: 8px 10px; border-radius: 10px; font-family: inherit; font-size: .7rem; font-weight: 700; cursor: pointer; }
+    .mute-btn:hover { background: #1b3538; color: #fff; }
     .viewer-insights { display: none !important; }
 
     /* ===== ANALYTICS PANEL ===== */
@@ -192,7 +201,9 @@
       .player-actions { width: 100%; }
       .player-actions > * { flex: 1 1 calc(50% - 4px); }
       .quality-menu { min-width: 0; }
-      .quality-btn, .action-btn { width: 100%; min-height: 44px; }
+      .volume-menu { min-width: 0; }
+      .quality-btn, .action-btn, .volume-btn { width: 100%; min-height: 44px; }
+      .volume-dropdown { left: 0; right: auto; width: min(100vw - 48px, 260px); }
       .player-overlay-btn { top: 10px; right: 10px; padding: 10px 12px; font-size: .72rem; }
     }
   </style>
@@ -247,6 +258,19 @@
             <div class="quality-menu" id="qualityMenu">
               <button class="quality-btn" id="btnQuality" title="Qualidade" disabled>Qualidade</button>
               <div class="quality-dropdown" id="qualityDropdown"></div>
+            </div>
+            <div class="volume-menu" id="volumeMenu">
+              <button class="action-btn volume-btn" id="btnVolume" type="button">Volume 100%</button>
+              <div class="volume-dropdown" id="volumeDropdown">
+                <div class="volume-label">
+                  <span>Volume</span>
+                  <strong id="volumeValue">100%</strong>
+                </div>
+                <div class="volume-row">
+                  <input class="volume-slider" id="volumeSlider" type="range" min="0" max="100" step="5" value="100" />
+                  <button class="mute-btn" id="btnMute" type="button">Mutar</button>
+                </div>
+              </div>
             </div>
             <button class="action-btn" id="btnTheater" type="button">Modo teatro</button>
             <button class="action-btn primary" id="btnFullscreen" type="button">Tela cheia</button>
@@ -419,6 +443,7 @@
   let livePhase = 'waiting';
   let resumeTimeoutId = 0;
   let theaterMode = false;
+  let lastVolumeBeforeMute = 100;
 
   // ===== UI ELEMENTS =====
   const playerContainer = document.getElementById('playerContainer');
@@ -436,6 +461,11 @@
   const ctrlTime = document.getElementById('ctrlTime');
   const btnQuality = document.getElementById('btnQuality');
   const qualityDropdown = document.getElementById('qualityDropdown');
+  const btnVolume = document.getElementById('btnVolume');
+  const volumeDropdown = document.getElementById('volumeDropdown');
+  const volumeSlider = document.getElementById('volumeSlider');
+  const volumeValue = document.getElementById('volumeValue');
+  const btnMute = document.getElementById('btnMute');
   const btnFullscreen = document.getElementById('btnFullscreen');
   const btnExitFullscreen = document.getElementById('btnExitFullscreen');
   const btnTheater = document.getElementById('btnTheater');
@@ -487,6 +517,39 @@
     } finally {
       updateFullscreenUi();
     }
+  }
+
+  function getSavedVolume() {
+    const raw = localStorage.getItem('up_live_volume');
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 100;
+  }
+
+  function updateVolumeUi(volume) {
+    const muted = volume <= 0;
+    const label = muted ? 'Sem som' : `Volume ${volume}%`;
+    btnVolume.textContent = label;
+    volumeValue.textContent = `${volume}%`;
+    btnMute.textContent = muted ? 'Ativar som' : 'Mutar';
+    volumeSlider.value = String(volume);
+  }
+
+  function applyVolume(volume, persist = true) {
+    const nextVolume = Math.max(0, Math.min(100, Math.round(volume)));
+    if (nextVolume > 0) lastVolumeBeforeMute = nextVolume;
+    if (playerReady && player) {
+      player.setVolume(nextVolume);
+      if (nextVolume === 0) player.mute();
+      else player.unMute();
+    }
+    if (persist) localStorage.setItem('up_live_volume', String(nextVolume));
+    updateVolumeUi(nextVolume);
+  }
+
+  function toggleMute() {
+    const currentVolume = Number(volumeSlider.value);
+    if (currentVolume <= 0) applyVolume(lastVolumeBeforeMute || 100);
+    else applyVolume(0);
   }
 
   function setGateVisible(visible) {
@@ -653,6 +716,7 @@
     videoDuration = player.getDuration();
     player.setPlaybackRate(1);
     setPlayerSurfaceVisible(false);
+    applyVolume(getSavedVolume(), false);
     btnQuality.disabled = false;
     setTimeout(buildQualityMenu, 2000);
     startTrackingInterval();
@@ -733,8 +797,24 @@
     e.stopPropagation();
     if (btnQuality.disabled) return;
     qualityDropdown.classList.toggle('show');
+    volumeDropdown.classList.remove('show');
   });
-  document.addEventListener('click', () => qualityDropdown.classList.remove('show'));
+  qualityDropdown.addEventListener('click', (e) => e.stopPropagation());
+  btnVolume.addEventListener('click', (e) => {
+    e.stopPropagation();
+    volumeDropdown.classList.toggle('show');
+    qualityDropdown.classList.remove('show');
+  });
+  volumeDropdown.addEventListener('click', (e) => e.stopPropagation());
+  volumeSlider.addEventListener('input', () => applyVolume(Number(volumeSlider.value)));
+  btnMute.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMute();
+  });
+  document.addEventListener('click', () => {
+    qualityDropdown.classList.remove('show');
+    volumeDropdown.classList.remove('show');
+  });
   liveJoinBtn.addEventListener('click', joinLive);
   clickShield.addEventListener('click', () => {
     if (!liveJoined && livePhase === 'live') joinLive();
