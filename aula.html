@@ -442,7 +442,6 @@
   const playerContainer = document.getElementById('playerContainer');
   const clickShield = document.getElementById('clickShield');
   const videoPoster = document.getElementById('videoPoster');
-  const ytPlayerHost = document.getElementById('ytPlayer');
   const videoLoading = document.getElementById('videoLoading');
   const videoLoadingText = document.getElementById('videoLoadingText');
   const liveGate = document.getElementById('liveGate');
@@ -513,8 +512,14 @@
   let player = null;
   let playerReady = false;
 
+  function getPlayerSurfaceElement() {
+    return document.getElementById('ytPlayer');
+  }
+
   function setPlayerSurfaceVisible(visible) {
-    ytPlayerHost.classList.toggle('player-visible', visible);
+    const playerSurface = getPlayerSurfaceElement();
+    if (!playerSurface) return;
+    playerSurface.classList.toggle('player-visible', visible);
   }
 
   function setPosterVisible(visible) {
