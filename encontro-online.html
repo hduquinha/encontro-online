@@ -58,6 +58,7 @@
     .hero-countdown-label { font-size: .72rem; letter-spacing: .45px; text-transform: uppercase; color: #7fa6aa; }
     .hero-countdown-value { font-size: clamp(1.8rem, 4vw, 2.7rem); font-weight: 800; color: #fff; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
     .hero-countdown-meta { font-size: .82rem; color: #9bd5da; }
+    .hero-cta-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 36px; }
 
     /* ===== VIDEO PREVIEW ===== */
     .video-preview { position: relative; max-width: 780px; margin: 0 auto 48px; border-radius: 22px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); aspect-ratio: 16/9; background: #0a1415; cursor: pointer; }
@@ -78,11 +79,16 @@
     @media (max-width: 600px) { .mentor-card { grid-template-columns: 1fr; text-align: center; } .mentor-avatar { margin: 0 auto; } }
 
     /* ===== ACCESS SECTION ===== */
-    .access-section { padding: 40px 0 60px; }
-    .access-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 22px; padding: 36px 32px; max-width: 480px; margin: 0 auto; box-shadow: 0 8px 40px -6px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03); position: relative; overflow: hidden; }
+    body.modal-open { overflow: hidden; }
+    .access-section { position: fixed; inset: 0; padding: 24px; display: flex; align-items: center; justify-content: center; background: rgba(2, 8, 9, .78); backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 1200; }
+    .access-section.show { opacity: 1; pointer-events: auto; }
+    .access-section .container { width: min(100%, 520px); padding: 0; }
+    .access-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 22px; padding: 36px 32px; max-width: 520px; margin: 0 auto; box-shadow: 0 8px 40px -6px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03); position: relative; overflow: hidden; }
     .access-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 88% 12%, rgba(var(--primary-rgb), .22), transparent 60%); }
     .access-card h2 { text-align: center; font-size: 1.15rem; letter-spacing: .8px; font-weight: 700; color: #fff; margin-bottom: 6px; }
     .access-card .access-sub { text-align: center; font-size: .78rem; color: #7fa6aa; margin-bottom: 24px; }
+    .access-close { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid #21484d; background: #132326; color: #9bd5da; font-size: 1.2rem; line-height: 1; cursor: pointer; font-family: inherit; }
+    .access-close:hover { background: #1a3538; color: #fff; }
 
     .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; position: relative; }
     .field label { font-size: .88rem; color: var(--text); font-weight: 600; letter-spacing: .3px; }
@@ -115,7 +121,12 @@
       70% { box-shadow: 0 4px 16px rgba(37,211,102,.4), 0 0 0 10px rgba(37,211,102,0); }
       100% { box-shadow: 0 4px 16px rgba(37,211,102,.4), 0 0 0 0 rgba(37,211,102,0); }
     }
-    @media (max-width:600px) { .whatsapp-float { bottom: 88px; right: 15px; width: 55px; height: 55px; } .whatsapp-float svg { width: 28px; height: 28px; } }
+    @media (max-width:600px) {
+      .whatsapp-float { bottom: 88px; right: 15px; width: 55px; height: 55px; }
+      .whatsapp-float svg { width: 28px; height: 28px; }
+      .access-section { padding: 16px; }
+      .access-card { padding: 32px 22px 24px; }
+    }
 
     html { scroll-behavior: smooth; }
 
@@ -129,7 +140,7 @@
   <nav class="nav">
     <div class="container nav-inner">
       <a href="#" class="nav-logo">Encontro <span>UP</span></a>
-      <a href="#acesso" class="btn-access" style="width:auto;padding:10px 20px;font-size:.8rem;margin:0;">Entrar na Live</a>
+      <button type="button" class="btn-access" id="openAccessBtn" style="width:auto;padding:10px 20px;font-size:.8rem;margin:0;">Entrar na Live</button>
     </div>
   </nav>
 
@@ -144,9 +155,12 @@
         <strong class="hero-countdown-value" id="heroCountdownValue">--:--:--</strong>
         <span class="hero-countdown-meta" id="heroCountdownMeta">Carregando horário da live...</span>
       </div>
+      <div class="hero-cta-row">
+        <button type="button" class="btn-access" id="heroAccessBtn" style="width:auto;padding:14px 28px;margin:0;">Quero entrar na live</button>
+      </div>
 
       <!-- Video Preview -->
-      <div class="video-preview" id="videoPreview" onclick="document.getElementById('acesso').scrollIntoView({behavior:'smooth'})">
+      <div class="video-preview" id="videoPreview">
         <div style="width:100%;height:100%;background:linear-gradient(135deg,#0a1a1c,#0f2a2e);display:flex;align-items:center;justify-content:center;">
           <div style="text-align:center;">
             <div style="font-size:3rem;margin-bottom:8px;">🧠</div>
@@ -181,9 +195,10 @@
   </section>
 
   <!-- ACCESS FORM (single form: name + phone + shared password) -->
-  <section class="access-section" id="acesso">
+  <section class="access-section" id="acesso" aria-hidden="true">
     <div class="container">
       <div class="access-card">
+        <button type="button" class="access-close" id="closeAccessBtn" aria-label="Fechar">×</button>
         <h2>🔓 Acesse a Live</h2>
         <p class="access-sub">Identifique-se e insira a senha de acesso para entrar na sala da transmissão</p>
         <form id="formAccess" autocomplete="off" novalidate>
@@ -228,6 +243,9 @@
     const API_URL = window.FORM_CONFIG?.ONLINE_SERVER_URL ?? '';
     const LIVE_START_AT = window.FORM_CONFIG?.LIVE_START_AT || '';
     const LIVE_TIMEZONE = window.FORM_CONFIG?.LIVE_TIMEZONE || 'America/Sao_Paulo';
+    const query = new URLSearchParams(window.location.search);
+    const rawNextPage = query.get('next') || 'aula.html';
+    const nextPage = /^[a-z0-9._/-]+\.html$/i.test(rawNextPage) ? rawNextPage : 'aula.html';
   </script>
 
   <script>
@@ -239,6 +257,24 @@
     const heroCountdownLabel = document.getElementById('heroCountdownLabel');
     const previewSchedule = document.getElementById('previewSchedule');
     const videoLockText = document.getElementById('videoLockText');
+    const accessModal = document.getElementById('acesso');
+    const openAccessBtn = document.getElementById('openAccessBtn');
+    const heroAccessBtn = document.getElementById('heroAccessBtn');
+    const closeAccessBtn = document.getElementById('closeAccessBtn');
+    const videoPreview = document.getElementById('videoPreview');
+
+    function openAccessModal() {
+      accessModal.classList.add('show');
+      accessModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+      setTimeout(() => document.getElementById('accessName').focus(), 60);
+    }
+
+    function closeAccessModal() {
+      accessModal.classList.remove('show');
+      accessModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+    }
 
     function formatLiveDate(date) {
       return new Intl.DateTimeFormat('pt-BR', {
@@ -288,6 +324,16 @@
 
     updateLiveCountdown();
     setInterval(updateLiveCountdown, 1000);
+    [openAccessBtn, heroAccessBtn, videoPreview].forEach((el) => {
+      el?.addEventListener('click', openAccessModal);
+    });
+    closeAccessBtn?.addEventListener('click', closeAccessModal);
+    accessModal.addEventListener('click', (event) => {
+      if (event.target === accessModal) closeAccessModal();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && accessModal.classList.contains('show')) closeAccessModal();
+    });
 
     // ===== PHONE MASK =====
     function phoneMask(input) {
@@ -354,7 +400,7 @@
         localStorage.setItem('up_user', JSON.stringify(data.user));
         status.className = 'form-status success';
         status.textContent = 'Acesso liberado! Redirecionando...';
-        setTimeout(() => { window.location.href = 'aula.html'; }, 800);
+        setTimeout(() => { window.location.href = nextPage; }, 800);
       } catch (err) {
         status.className = 'form-status error';
         status.textContent = err.message;
@@ -366,8 +412,10 @@
     (function() {
       const token = localStorage.getItem('up_token');
       if (token) {
-        window.location.href = 'aula.html';
+        window.location.href = nextPage;
+        return;
       }
+      openAccessModal();
     })();
 
     // ===== SCROLL ANIMATIONS =====

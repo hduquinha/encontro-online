@@ -49,6 +49,9 @@
     .player-container { margin-bottom: 24px; border-radius: 20px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); background: #000; position: relative; }
     .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; }
     .video-area iframe { width: 100%; height: 100%; display: block; border: none; }
+    #ytPlayer { position: absolute; inset: 0; opacity: 0; transition: opacity .22s ease; }
+    #ytPlayer.player-visible { opacity: 1; }
+    #ytPlayer iframe { pointer-events: none; }
 
     /* Click shield blocks YouTube UI clicks */
     .click-shield { position: absolute; inset: 0; z-index: 5; cursor: default; }
@@ -313,7 +316,7 @@
   // ===== AUTH =====
   const token = localStorage.getItem('up_token');
   const user = JSON.parse(localStorage.getItem('up_user') || 'null');
-  if (!token || !user) window.location.href = 'encontro-online.html';
+  if (!token || !user) window.location.href = 'encontro-online.html?login=1&next=aula.html';
   document.getElementById('userName').textContent = user?.name || '—';
 
   function logout() {
@@ -393,6 +396,7 @@
 
   // ===== UI ELEMENTS =====
   const clickShield = document.getElementById('clickShield');
+  const ytPlayerHost = document.getElementById('ytPlayer');
   const liveGate = document.getElementById('liveGate');
   const liveGatePill = document.getElementById('liveGatePill');
   const liveGateTitle = document.getElementById('liveGateTitle');
@@ -409,6 +413,10 @@
   // ===== YOUTUBE PLAYER =====
   let player = null;
   let playerReady = false;
+
+  function setPlayerSurfaceVisible(visible) {
+    ytPlayerHost.classList.toggle('player-visible', visible);
+  }
 
   function setGateVisible(visible) {
     liveGate.classList.toggle('hidden', !visible);
@@ -451,6 +459,7 @@
       flushTick();
       player.stopVideo();
       isPlaying = false;
+      setPlayerSurfaceVisible(false);
     }
 
     if (livePhase === 'waiting') {
@@ -467,6 +476,7 @@
       ctrlTime.textContent = `A aula começa em ${formatCountdown(waitMs)}`;
       progressBar.classList.remove('live');
       progressBar.style.width = '0%';
+      setPlayerSurfaceVisible(false);
       setGateVisible(true);
       return;
     }
@@ -484,6 +494,7 @@
       ctrlTime.textContent = 'Transmissão encerrada';
       progressBar.classList.remove('live');
       progressBar.style.width = '100%';
+      setPlayerSurfaceVisible(false);
       setGateVisible(true);
       return;
     }
@@ -536,6 +547,7 @@
     liveJoined = true;
     currentSpeed = 1;
     player.setPlaybackRate(1);
+    setPlayerSurfaceVisible(false);
     syncPlayerToLive(true);
     setGateVisible(false);
     player.playVideo();
@@ -569,6 +581,7 @@
     playerReady = true;
     videoDuration = player.getDuration();
     player.setPlaybackRate(1);
+    setPlayerSurfaceVisible(false);
     btnQuality.disabled = false;
     setTimeout(buildQualityMenu, 2000);
     startTrackingInterval();
@@ -586,11 +599,13 @@
       lastTickTime = Date.now();
       currentSpeed = 1;
       if (!videoDuration) videoDuration = player.getDuration();
+      setPlayerSurfaceVisible(true);
       syncPlayerToLive();
 
     } else if (state === YT.PlayerState.PAUSED) {
       flushTick();
       isPlaying = false;
+      setPlayerSurfaceVisible(false);
       if (liveJoined && livePhase === 'live') scheduleResume();
       else syncToServer();
 
@@ -598,6 +613,7 @@
       flushTick();
       isPlaying = false;
       completed = true;
+      setPlayerSurfaceVisible(false);
       syncToServer(true);
       updateLivePresentation();
     }
