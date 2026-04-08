@@ -67,6 +67,11 @@
     #ytPlayer { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .22s ease, visibility .22s ease; }
     #ytPlayer.player-visible { opacity: 1; visibility: visible; }
     #ytPlayer iframe { pointer-events: none; }
+    .fullscreen-exit-btn { position: absolute; top: max(14px, env(safe-area-inset-top, 0)); right: max(14px, env(safe-area-inset-right, 0)); z-index: 40; width: 44px; height: 44px; border: 1px solid rgba(33,72,77,.88); background: rgba(5,16,18,.92); color: #d9feff; border-radius: 999px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 16px 40px -22px rgba(0,0,0,.85); backdrop-filter: blur(10px); }
+    .fullscreen-exit-btn:hover { background: rgba(12, 29, 32, .96); color: #fff; }
+    .fullscreen-exit-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    body.player-fullscreen .fullscreen-exit-btn,
+    body.player-pseudo-fullscreen .fullscreen-exit-btn { display: inline-flex; }
 
     /* Click shield blocks YouTube UI clicks */
     .click-shield { position: absolute; inset: 0; z-index: 5; cursor: default; }
@@ -156,23 +161,22 @@
       border-radius: 0;
       border: none;
       box-shadow: none;
-      display: flex;
-      flex-direction: column;
     }
     body.player-pseudo-fullscreen .video-area {
-      flex: 1 1 auto;
-      min-height: 0;
-      height: auto;
+      height: 100%;
       aspect-ratio: auto;
     }
     body.player-pseudo-fullscreen .controls {
-      flex: 0 0 auto;
-      position: relative;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
       z-index: 20;
-      background: linear-gradient(180deg, rgba(4, 10, 11, .92), #091314);
+      background: linear-gradient(180deg, rgba(4, 10, 11, 0), rgba(4, 10, 11, .18) 12%, rgba(4, 10, 11, .9) 52%, #091314 100%);
       padding-bottom: env(safe-area-inset-bottom, 0);
     }
     body.player-pseudo-fullscreen .controls-row {
+      align-items: flex-end;
       padding-left: max(14px, env(safe-area-inset-left, 0));
       padding-right: max(14px, env(safe-area-inset-right, 0));
     }
@@ -279,6 +283,51 @@
         height: 42px;
       }
     }
+
+    @media (orientation: landscape) and (max-height: 520px) {
+      body.player-pseudo-fullscreen .progress-wrap {
+        height: 4px;
+      }
+      body.player-pseudo-fullscreen .controls-row {
+        flex-wrap: nowrap;
+        gap: 8px;
+        padding: 8px max(12px, env(safe-area-inset-left, 0)) calc(8px + env(safe-area-inset-bottom, 0)) max(12px, env(safe-area-inset-right, 0));
+      }
+      body.player-pseudo-fullscreen .live-status {
+        width: auto;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+      }
+      body.player-pseudo-fullscreen .ctrl-time {
+        display: none;
+      }
+      body.player-pseudo-fullscreen .ctrl-spacer {
+        flex: 1;
+        display: block;
+      }
+      body.player-pseudo-fullscreen .player-actions {
+        width: auto;
+        flex-wrap: nowrap;
+      }
+      body.player-pseudo-fullscreen .quality-btn {
+        min-width: 72px;
+        min-height: 38px;
+        font-size: .64rem;
+      }
+      body.player-pseudo-fullscreen .volume-control {
+        min-height: 38px;
+        padding-inline: 8px;
+      }
+      body.player-pseudo-fullscreen .volume-slider {
+        width: 84px;
+      }
+      body.player-pseudo-fullscreen .action-btn.icon-btn,
+      body.player-pseudo-fullscreen .fullscreen-exit-btn {
+        width: 38px;
+        height: 38px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -304,6 +353,7 @@
         <div id="ytPlayer"></div>
         <!-- Transparent shield blocks YouTube UI (prevents seeking) -->
         <div class="click-shield" id="clickShield"></div>
+        <button class="fullscreen-exit-btn" id="btnExitFullscreen" type="button" aria-label="Sair da tela cheia" title="Sair da tela cheia"></button>
         <div class="video-loading" id="videoLoading" aria-live="polite">
           <div class="video-loading-card">
             <span class="video-spinner" aria-hidden="true"></span>
@@ -537,6 +587,7 @@
   const volumeSlider = document.getElementById('volumeSlider');
   const volumeValue = document.getElementById('volumeValue');
   const btnFullscreen = document.getElementById('btnFullscreen');
+  const btnExitFullscreen = document.getElementById('btnExitFullscreen');
 
   const ICONS = {
     volumeHigh: `
@@ -746,13 +797,7 @@
   }
 
   function getPreferredFullscreenTarget() {
-    const playerSurface = getPlayerSurfaceElement();
-    const candidates = [playerSurface, videoArea, playerContainer].filter(Boolean);
-    return candidates.find((element) =>
-      element.requestFullscreen ||
-      element.webkitRequestFullscreen ||
-      element.msRequestFullscreen
-    ) || playerContainer;
+    return playerContainer;
   }
 
   async function requestPlayerFullscreen() {
@@ -784,6 +829,7 @@
       isFullscreen ? ICONS.fullscreenExit : ICONS.fullscreenEnter,
       isFullscreen ? 'Sair da tela cheia' : 'Entrar em tela cheia'
     );
+    setButtonIcon(btnExitFullscreen, ICONS.fullscreenExit, 'Sair da tela cheia');
   }
 
   async function toggleFullscreen() {
@@ -1181,6 +1227,7 @@
     if (!liveJoined) joinLive();
   });
   btnFullscreen.addEventListener('click', toggleFullscreen);
+  btnExitFullscreen.addEventListener('click', toggleFullscreen);
   document.addEventListener('fullscreenchange', updateFullscreenUi);
   document.addEventListener('webkitfullscreenchange', updateFullscreenUi);
   document.addEventListener('msfullscreenchange', updateFullscreenUi);
