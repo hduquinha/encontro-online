@@ -29,7 +29,8 @@
       min-height: 100vh;
       line-height: 1.5;
     }
-    body.player-fullscreen {
+    body.player-fullscreen,
+    body.player-pseudo-fullscreen {
       background: #000;
     }
 
@@ -51,9 +52,11 @@
 
     /* ===== CUSTOM VIDEO PLAYER ===== */
     .player-container { margin-bottom: 24px; border-radius: 20px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); background: #000; position: relative; }
-    body.player-fullscreen .player-container { width: 100%; height: 100%; border-radius: 0; border: none; box-shadow: none; }
+    body.player-fullscreen .player-container,
+    body.player-pseudo-fullscreen .player-container { width: 100%; height: 100%; border-radius: 0; border: none; box-shadow: none; }
     .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; }
-    body.player-fullscreen .video-area { height: calc(100vh - 88px); aspect-ratio: auto; }
+    body.player-fullscreen .video-area,
+    body.player-pseudo-fullscreen .video-area { height: calc(100vh - 88px); aspect-ratio: auto; }
     .video-area iframe { width: 100%; height: 100%; display: block; border: none; }
     .video-poster { position: absolute; inset: 0; z-index: 1; background: #020607 center / cover no-repeat; opacity: 1; transition: opacity .24s ease; }
     .video-poster.hidden { opacity: 0; pointer-events: none; }
@@ -347,8 +350,6 @@
   </footer>
 
   <script src="config.js"></script>
-  <!-- YouTube IFrame API -->
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
   const API_URL = window.FORM_CONFIG?.ONLINE_SERVER_URL ?? '';
   const LIVE_START_AT = window.FORM_CONFIG?.LIVE_START_AT || '';
@@ -440,6 +441,7 @@
 
   // ===== UI ELEMENTS =====
   const playerContainer = document.getElementById('playerContainer');
+  const videoArea = document.getElementById('videoArea');
   const clickShield = document.getElementById('clickShield');
   const videoPoster = document.getElementById('videoPoster');
   const videoLoading = document.getElementById('videoLoading');
@@ -511,9 +513,80 @@
   // ===== YOUTUBE PLAYER =====
   let player = null;
   let playerReady = false;
+  let playerBootStatus = 'idle';
+  let playerBootTimeoutId = 0;
+  let pseudoFullscreen = false;
 
   function getPlayerSurfaceElement() {
     return document.getElementById('ytPlayer');
+  }
+
+  function clearPlayerBootTimeout() {
+    window.clearTimeout(playerBootTimeoutId);
+    playerBootTimeoutId = 0;
+  }
+
+  function isPlayerBootRecoverable() {
+    return playerBootStatus === 'timeout' || playerBootStatus === 'error';
+  }
+
+  function ensurePlayerHostElement() {
+    const current = getPlayerSurfaceElement();
+    if (current && current.tagName === 'DIV') return current;
+
+    if (player && typeof player.destroy === 'function') {
+      try { player.destroy(); } catch (error) { /* noop */ }
+    }
+
+    const nextHost = document.createElement('div');
+    nextHost.id = 'ytPlayer';
+
+    if (current?.parentNode) current.parentNode.replaceChild(nextHost, current);
+    else videoArea.insertBefore(nextHost, clickShield);
+
+    player = null;
+    return nextHost;
+  }
+
+  function schedulePlayerBootTimeout() {
+    clearPlayerBootTimeout();
+    playerBootTimeoutId = window.setTimeout(() => {
+      if (playerReady) return;
+      playerBootStatus = 'timeout';
+      setLoadingState(false);
+      updateLivePresentation();
+    }, 9000);
+  }
+
+  function loadYouTubeIframeApi(forceReload = false) {
+    if (!ytVideoId) return;
+
+    if (window.YT && typeof window.YT.Player === 'function') {
+      window.onYouTubeIframeAPIReady();
+      return;
+    }
+
+    if (forceReload) {
+      document.querySelectorAll('script[data-yt-iframe-api]').forEach((script) => script.remove());
+    } else if (document.querySelector('script[data-yt-iframe-api]')) {
+      playerBootStatus = 'loading';
+      schedulePlayerBootTimeout();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://www.youtube.com/iframe_api';
+    script.async = true;
+    script.dataset.ytIframeApi = '1';
+    script.onerror = () => {
+      playerBootStatus = 'error';
+      setLoadingState(false);
+      updateLivePresentation();
+    };
+    document.head.appendChild(script);
+
+    playerBootStatus = 'loading';
+    schedulePlayerBootTimeout();
   }
 
   function setPlayerSurfaceVisible(visible) {
@@ -567,22 +640,49 @@
     return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
   }
 
+  function isPseudoFullscreenActive() {
+    return pseudoFullscreen;
+  }
+
+  function isPlayerFullscreenActive() {
+    return Boolean(getFullscreenElement()) || isPseudoFullscreenActive();
+  }
+
+  function setPseudoFullscreen(active) {
+    pseudoFullscreen = active;
+    document.body.classList.toggle('player-pseudo-fullscreen', active);
+  }
+
+  function getPreferredFullscreenTarget() {
+    const playerSurface = getPlayerSurfaceElement();
+    const candidates = [playerSurface, videoArea, playerContainer].filter(Boolean);
+    return candidates.find((element) =>
+      element.requestFullscreen ||
+      element.webkitRequestFullscreen ||
+      element.msRequestFullscreen
+    ) || playerContainer;
+  }
+
   async function requestPlayerFullscreen() {
-    if (playerContainer.requestFullscreen) return playerContainer.requestFullscreen();
-    if (playerContainer.webkitRequestFullscreen) return playerContainer.webkitRequestFullscreen();
-    if (playerContainer.msRequestFullscreen) return playerContainer.msRequestFullscreen();
-    throw new Error('fullscreen-unavailable');
+    const target = getPreferredFullscreenTarget();
+    if (target.requestFullscreen) return target.requestFullscreen();
+    if (target.webkitRequestFullscreen) return target.webkitRequestFullscreen();
+    if (target.msRequestFullscreen) return target.msRequestFullscreen();
+    setPseudoFullscreen(true);
   }
 
   async function exitPlayerFullscreen() {
-    if (document.exitFullscreen) return document.exitFullscreen();
-    if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
-    if (document.msExitFullscreen) return document.msExitFullscreen();
+    if (getFullscreenElement()) {
+      if (document.exitFullscreen) return document.exitFullscreen();
+      if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
+      if (document.msExitFullscreen) return document.msExitFullscreen();
+    }
+    if (isPseudoFullscreenActive()) setPseudoFullscreen(false);
   }
 
   function updateFullscreenUi() {
-    const isFullscreen = Boolean(getFullscreenElement());
-    document.body.classList.toggle('player-fullscreen', isFullscreen);
+    const isFullscreen = isPlayerFullscreenActive();
+    document.body.classList.toggle('player-fullscreen', Boolean(getFullscreenElement()));
     setButtonIcon(
       btnFullscreen,
       isFullscreen ? ICONS.fullscreenExit : ICONS.fullscreenEnter,
@@ -592,9 +692,10 @@
 
   async function toggleFullscreen() {
     try {
-      if (getFullscreenElement()) await exitPlayerFullscreen();
+      if (isPlayerFullscreenActive()) await exitPlayerFullscreen();
       else await requestPlayerFullscreen();
     } catch (error) {
+      setPseudoFullscreen(!isPseudoFullscreenActive());
       console.warn('Nao foi possivel alternar a tela cheia.', error);
     } finally {
       updateFullscreenUi();
@@ -671,6 +772,7 @@
   function updateLivePresentation() {
     const nextPhase = getCurrentPhase();
     const phaseChanged = nextPhase !== livePhase;
+    const canRetryBoot = isPlayerBootRecoverable();
     livePhase = nextPhase;
     applyLiveState(livePhase);
     clickShield.style.cursor = livePhase === 'live' && !liveJoined ? 'pointer' : 'default';
@@ -728,10 +830,12 @@
     liveGateTitle.textContent = 'A transmissão já está no ar';
     liveGateText.textContent = playerReady
       ? 'Clique abaixo para entrar na sala ao vivo. Não há pausa manual nem retorno ao início.'
-      : 'A sala ao vivo está abrindo. Aguarde alguns segundos.';
+      : canRetryBoot
+        ? 'A transmissão demorou para carregar. Toque abaixo para tentar novamente.'
+        : 'A sala ao vivo está abrindo. Aguarde alguns segundos.';
     liveCountdown.textContent = liveMode ? `No ar há ${fmt(getLiveElapsedSeconds())}` : 'AO VIVO';
-    liveJoinBtn.textContent = playerReady ? 'Entrar na transmissão' : 'Carregando transmissão';
-    liveJoinBtn.disabled = !playerReady;
+    liveJoinBtn.textContent = playerReady ? 'Entrar na transmissão' : canRetryBoot ? 'Tentar carregar transmissão' : 'Carregando transmissão';
+    liveJoinBtn.disabled = !playerReady && !canRetryBoot;
     ctrlTime.textContent = liveMode ? `No ar há ${fmt(getLiveElapsedSeconds())}` : 'Transmissão em andamento';
     progressBar.classList.add('live');
     if (!liveJoined) {
@@ -770,6 +874,17 @@
     }, 250);
   }
 
+  function retryPlayerBoot(forceReload = true) {
+    if (!ytVideoId) return;
+    playerReady = false;
+    playerBootStatus = 'loading';
+    setLoadingState(true, 'Carregando transmissao...');
+    setPosterVisible(true);
+    ensurePlayerHostElement();
+    loadYouTubeIframeApi(forceReload);
+    updateLivePresentation();
+  }
+
   function joinLive() {
     if (!playerReady || livePhase !== 'live') return;
     liveJoined = true;
@@ -792,6 +907,17 @@
 
   window.onYouTubeIframeAPIReady = function() {
     if (!ytVideoId) return;
+    if (!(window.YT && typeof window.YT.Player === 'function')) {
+      playerBootStatus = 'error';
+      setLoadingState(false);
+      updateLivePresentation();
+      return;
+    }
+
+    playerBootStatus = 'creating';
+    playerReady = false;
+    ensurePlayerHostElement();
+    schedulePlayerBootTimeout();
 
     const playerVars = {
       controls: 0,        // hide default YouTube controls
@@ -807,18 +933,28 @@
       playerVars.origin = window.location.origin;
     }
 
-    player = new YT.Player('ytPlayer', {
-      videoId: ytVideoId,
-      playerVars,
-      events: {
-        onReady: onPlayerReady,
-        onStateChange: onPlayerStateChange
-      }
-    });
+    try {
+      player = new YT.Player('ytPlayer', {
+        videoId: ytVideoId,
+        playerVars,
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange
+        }
+      });
+    } catch (error) {
+      playerBootStatus = 'error';
+      clearPlayerBootTimeout();
+      setLoadingState(false);
+      console.error('Falha ao criar o player do YouTube.', error);
+      updateLivePresentation();
+    }
   };
 
   function onPlayerReady() {
     playerReady = true;
+    playerBootStatus = 'ready';
+    clearPlayerBootTimeout();
     videoDuration = player.getDuration();
     player.setPlaybackRate(1);
     setPlayerSurfaceVisible(true);
@@ -932,9 +1068,21 @@
   document.addEventListener('click', () => {
     qualityDropdown.classList.remove('show');
   });
-  liveJoinBtn.addEventListener('click', joinLive);
+  liveJoinBtn.addEventListener('click', () => {
+    if (livePhase !== 'live') return;
+    if (!playerReady) {
+      if (isPlayerBootRecoverable()) retryPlayerBoot();
+      return;
+    }
+    joinLive();
+  });
   clickShield.addEventListener('click', () => {
-    if (!liveJoined && livePhase === 'live') joinLive();
+    if (livePhase !== 'live') return;
+    if (!playerReady) {
+      if (isPlayerBootRecoverable()) retryPlayerBoot();
+      return;
+    }
+    if (!liveJoined) joinLive();
   });
   btnFullscreen.addEventListener('click', toggleFullscreen);
   document.addEventListener('fullscreenchange', updateFullscreenUi);
@@ -1127,9 +1275,14 @@
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
     if (e.key === 'f') btnFullscreen.click();
+    if (e.key === 'Escape' && isPseudoFullscreenActive()) {
+      e.preventDefault();
+      toggleFullscreen();
+    }
     if (e.key === 'Enter' && !liveJoined && livePhase === 'live') {
       e.preventDefault();
-      joinLive();
+      if (playerReady) joinLive();
+      else if (isPlayerBootRecoverable()) retryPlayerBoot();
     }
   });
 
@@ -1172,6 +1325,7 @@
     }, 500);
   });
 
+  loadYouTubeIframeApi(false);
   updateLivePresentation();
 
   </script>
