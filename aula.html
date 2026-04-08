@@ -67,7 +67,7 @@
     #ytPlayer { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .22s ease, visibility .22s ease; }
     #ytPlayer.player-visible { opacity: 1; visibility: visible; }
     #ytPlayer iframe { pointer-events: none; }
-    .fullscreen-exit-btn { position: absolute; top: max(14px, env(safe-area-inset-top, 0)); right: max(14px, env(safe-area-inset-right, 0)); z-index: 40; width: 44px; height: 44px; border: 1px solid rgba(33,72,77,.88); background: rgba(5,16,18,.92); color: #d9feff; border-radius: 999px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 16px 40px -22px rgba(0,0,0,.85); backdrop-filter: blur(10px); }
+    .fullscreen-exit-btn { position: absolute; top: max(14px, env(safe-area-inset-top, 0)); right: max(14px, env(safe-area-inset-right, 0)); z-index: 40; width: 44px; height: 44px; border: 1px solid rgba(33,72,77,.88); background: rgba(5,16,18,.92); color: #d9feff; border-radius: 999px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 16px 40px -22px rgba(0,0,0,.85); backdrop-filter: blur(10px); transition: opacity .18s ease, background .18s ease, color .18s ease; }
     .fullscreen-exit-btn:hover { background: rgba(12, 29, 32, .96); color: #fff; }
     .fullscreen-exit-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     body.player-fullscreen .fullscreen-exit-btn,
@@ -162,11 +162,13 @@
       border: none;
       box-shadow: none;
     }
-    body.player-pseudo-fullscreen .video-area {
+    body.player-pseudo-fullscreen .video-area,
+    body.player-fullscreen .video-area {
       height: 100%;
       aspect-ratio: auto;
     }
-    body.player-pseudo-fullscreen .controls {
+    body.player-pseudo-fullscreen .controls,
+    body.player-fullscreen .controls {
       position: absolute;
       left: 0;
       right: 0;
@@ -174,11 +176,30 @@
       z-index: 20;
       background: linear-gradient(180deg, rgba(4, 10, 11, 0), rgba(4, 10, 11, .18) 12%, rgba(4, 10, 11, .9) 52%, #091314 100%);
       padding-bottom: env(safe-area-inset-bottom, 0);
+      transition: transform .22s ease, opacity .22s ease;
     }
-    body.player-pseudo-fullscreen .controls-row {
+    body.player-pseudo-fullscreen .controls-row,
+    body.player-fullscreen .controls-row {
       align-items: flex-end;
       padding-left: max(14px, env(safe-area-inset-left, 0));
       padding-right: max(14px, env(safe-area-inset-right, 0));
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    body.player-controls-hidden.player-pseudo-fullscreen .controls,
+    body.player-controls-hidden.player-fullscreen .controls {
+      transform: translateY(calc(100% - 6px - env(safe-area-inset-bottom, 0)));
+      opacity: .14;
+      pointer-events: none;
+    }
+    body.player-controls-hidden.player-pseudo-fullscreen .controls-row,
+    body.player-controls-hidden.player-fullscreen .controls-row {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    body.player-controls-hidden.player-pseudo-fullscreen .fullscreen-exit-btn,
+    body.player-controls-hidden.player-fullscreen .fullscreen-exit-btn {
+      opacity: 0;
+      pointer-events: none;
     }
 
     /* ===== ANALYTICS PANEL ===== */
@@ -247,7 +268,8 @@
       .volume-control { order: -1; flex: 1 1 100%; }
       .volume-slider { flex: 1; width: auto; }
 
-      body.player-pseudo-fullscreen .controls-row {
+      body.player-pseudo-fullscreen .controls-row,
+      body.player-fullscreen .controls-row {
         gap: 10px;
         padding: 10px max(12px, env(safe-area-inset-left, 0)) calc(10px + env(safe-area-inset-bottom, 0)) max(12px, env(safe-area-inset-right, 0));
       }
@@ -278,17 +300,20 @@
       body.player-pseudo-fullscreen .volume-value {
         min-width: 34px;
       }
-      body.player-pseudo-fullscreen .action-btn.icon-btn {
+      body.player-pseudo-fullscreen .action-btn.icon-btn,
+      body.player-fullscreen .action-btn.icon-btn {
         width: 42px;
         height: 42px;
       }
     }
 
     @media (orientation: landscape) and (max-height: 520px) {
-      body.player-pseudo-fullscreen .progress-wrap {
+      body.player-pseudo-fullscreen .progress-wrap,
+      body.player-fullscreen .progress-wrap {
         height: 4px;
       }
-      body.player-pseudo-fullscreen .controls-row {
+      body.player-pseudo-fullscreen .controls-row,
+      body.player-fullscreen .controls-row {
         flex-wrap: nowrap;
         gap: 8px;
         padding: 8px max(12px, env(safe-area-inset-left, 0)) calc(8px + env(safe-area-inset-bottom, 0)) max(12px, env(safe-area-inset-right, 0));
@@ -323,6 +348,7 @@
         width: 84px;
       }
       body.player-pseudo-fullscreen .action-btn.icon-btn,
+      body.player-fullscreen .action-btn.icon-btn,
       body.player-pseudo-fullscreen .fullscreen-exit-btn {
         width: 38px;
         height: 38px;
@@ -561,12 +587,15 @@
   let livePhase = 'waiting';
   let resumeTimeoutId = 0;
   let playbackRecoveryTimeoutId = 0;
+  let controlsHideTimeoutId = 0;
+  let controlsChromeVisible = true;
   let hasStartedPlayback = false;
   let lastVolumeBeforeMute = 100;
 
   // ===== UI ELEMENTS =====
   const playerContainer = document.getElementById('playerContainer');
   const videoArea = document.getElementById('videoArea');
+  const videoControls = document.getElementById('videoControls');
   const clickShield = document.getElementById('clickShield');
   const videoPoster = document.getElementById('videoPoster');
   const videoLoading = document.getElementById('videoLoading');
@@ -738,11 +767,65 @@
   function setLoadingState(active, text = 'Carregando video...') {
     videoLoading.classList.toggle('show', active);
     videoLoadingText.textContent = text;
+    syncControlsAutoHide();
   }
 
   function clearPlaybackRecovery() {
     window.clearTimeout(playbackRecoveryTimeoutId);
     playbackRecoveryTimeoutId = 0;
+  }
+
+  function clearControlsHideTimeout() {
+    window.clearTimeout(controlsHideTimeoutId);
+    controlsHideTimeoutId = 0;
+  }
+
+  function setControlsChromeVisible(visible) {
+    controlsChromeVisible = visible;
+    document.body.classList.toggle('player-controls-hidden', !visible && isPlayerFullscreenActive());
+  }
+
+  function shouldKeepControlsVisible() {
+    return !isPlayerFullscreenActive()
+      || !playerReady
+      || !liveJoined
+      || livePhase !== 'live'
+      || !hasStartedPlayback
+      || qualityDropdown.classList.contains('show')
+      || videoLoading.classList.contains('show')
+      || !liveGate.classList.contains('hidden');
+  }
+
+  function syncControlsAutoHide() {
+    clearControlsHideTimeout();
+    if (shouldKeepControlsVisible()) {
+      setControlsChromeVisible(true);
+      return;
+    }
+
+    controlsHideTimeoutId = window.setTimeout(() => {
+      if (shouldKeepControlsVisible()) {
+        setControlsChromeVisible(true);
+        return;
+      }
+      setControlsChromeVisible(false);
+    }, 2200);
+  }
+
+  function revealControlsTemporarily(delay = 2200) {
+    setControlsChromeVisible(true);
+    clearControlsHideTimeout();
+    if (shouldKeepControlsVisible()) return;
+
+    controlsHideTimeoutId = window.setTimeout(() => {
+      if (shouldKeepControlsVisible()) return;
+      setControlsChromeVisible(false);
+    }, delay);
+  }
+
+  function handlePlayerActivity() {
+    if (!isPlayerFullscreenActive()) return;
+    revealControlsTemporarily();
   }
 
   function queuePlaybackRecovery() {
@@ -794,6 +877,7 @@
       window.scrollTo(0, pseudoFullscreenScrollY);
     }
     document.body.classList.toggle('player-pseudo-fullscreen', active);
+    setControlsChromeVisible(true);
   }
 
   function getPreferredFullscreenTarget() {
@@ -830,6 +914,7 @@
       isFullscreen ? 'Sair da tela cheia' : 'Entrar em tela cheia'
     );
     setButtonIcon(btnExitFullscreen, ICONS.fullscreenExit, 'Sair da tela cheia');
+    syncControlsAutoHide();
   }
 
   async function toggleFullscreen() {
@@ -882,6 +967,7 @@
 
   function setGateVisible(visible) {
     liveGate.classList.toggle('hidden', !visible);
+    syncControlsAutoHide();
   }
 
   function getLiveElapsedSeconds(now = Date.now()) {
@@ -1020,6 +1106,7 @@
     if (!ytVideoId) return;
     playerReady = false;
     playerBootStatus = 'loading';
+    setControlsChromeVisible(true);
     setLoadingState(true, 'Carregando transmissao...');
     setPosterVisible(true);
     ensurePlayerHostElement();
@@ -1031,6 +1118,7 @@
     if (!playerReady || livePhase !== 'live') return;
     liveJoined = true;
     hasStartedPlayback = false;
+    setControlsChromeVisible(true);
     currentSpeed = 1;
     player.setPlaybackRate(1);
     setPlayerSurfaceVisible(true);
@@ -1109,6 +1197,7 @@
     loadWatchData().finally(() => {
       updateLivePresentation();
       updateUI();
+      syncControlsAutoHide();
     });
   }
 
@@ -1126,6 +1215,7 @@
       setLoadingState(false);
       clearPlaybackRecovery();
       syncPlayerToLive();
+      syncControlsAutoHide();
 
     } else if (state === YT.PlayerState.BUFFERING) {
       if (!videoDuration) videoDuration = player.getDuration();
@@ -1133,6 +1223,7 @@
       setLoadingState(true, hasStartedPlayback ? 'Conectando...' : 'Carregando video...');
       if (!hasStartedPlayback) setPosterVisible(true);
       queuePlaybackRecovery();
+      syncControlsAutoHide();
 
     } else if (state === YT.PlayerState.PAUSED) {
       flushTick();
@@ -1146,6 +1237,7 @@
         setLoadingState(false);
         syncToServer();
       }
+      syncControlsAutoHide();
 
     } else if (state === YT.PlayerState.ENDED) {
       flushTick();
@@ -1157,6 +1249,7 @@
       clearPlaybackRecovery();
       syncToServer(true);
       updateLivePresentation();
+      syncControlsAutoHide();
     }
   }
 
@@ -1199,16 +1292,31 @@
     });
   }
 
+  playerContainer.addEventListener('pointermove', handlePlayerActivity, { passive: true });
+  playerContainer.addEventListener('pointerdown', handlePlayerActivity, { passive: true });
+  playerContainer.addEventListener('touchstart', handlePlayerActivity, { passive: true });
+  videoControls.addEventListener('pointermove', handlePlayerActivity, { passive: true });
+  videoControls.addEventListener('pointerdown', handlePlayerActivity, { passive: true });
+
   btnQuality.addEventListener('click', (e) => {
     e.stopPropagation();
     if (btnQuality.disabled) return;
+    revealControlsTemporarily(2600);
     qualityDropdown.classList.toggle('show');
+    syncControlsAutoHide();
   });
   qualityDropdown.addEventListener('click', (e) => e.stopPropagation());
-  btnVolume.addEventListener('click', toggleMute);
-  volumeSlider.addEventListener('input', () => applyVolume(Number(volumeSlider.value)));
+  btnVolume.addEventListener('click', () => {
+    revealControlsTemporarily(2600);
+    toggleMute();
+  });
+  volumeSlider.addEventListener('input', () => {
+    revealControlsTemporarily(2600);
+    applyVolume(Number(volumeSlider.value));
+  });
   document.addEventListener('click', () => {
     qualityDropdown.classList.remove('show');
+    syncControlsAutoHide();
   });
   liveJoinBtn.addEventListener('click', () => {
     if (livePhase !== 'live') return;
@@ -1219,6 +1327,7 @@
     joinLive();
   });
   clickShield.addEventListener('click', () => {
+    revealControlsTemporarily(2600);
     if (livePhase !== 'live') return;
     if (!playerReady) {
       if (isPlayerBootRecoverable()) retryPlayerBoot();
@@ -1226,8 +1335,14 @@
     }
     if (!liveJoined) joinLive();
   });
-  btnFullscreen.addEventListener('click', toggleFullscreen);
-  btnExitFullscreen.addEventListener('click', toggleFullscreen);
+  btnFullscreen.addEventListener('click', () => {
+    revealControlsTemporarily(3000);
+    toggleFullscreen();
+  });
+  btnExitFullscreen.addEventListener('click', () => {
+    revealControlsTemporarily(3000);
+    toggleFullscreen();
+  });
   document.addEventListener('fullscreenchange', updateFullscreenUi);
   document.addEventListener('webkitfullscreenchange', updateFullscreenUi);
   document.addEventListener('msfullscreenchange', updateFullscreenUi);
@@ -1417,6 +1532,7 @@
   // ===== KEYBOARD SHORTCUTS =====
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+    if (isPlayerFullscreenActive()) revealControlsTemporarily(2600);
     if (e.key === 'f') btnFullscreen.click();
     if (e.key === 'Escape' && isPseudoFullscreenActive()) {
       e.preventDefault();
