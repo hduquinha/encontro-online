@@ -1,6 +1,6 @@
 // Configure aqui as URLs do projeto
 window.FORM_CONFIG = {
-  LIVE_START_AT: "2026-04-08T19:00:00-03:00",
+  LIVE_START_AT: "2026-04-08T17:25:00-03:00",
   LIVE_TIMEZONE: "America/Sao_Paulo",
   SERVER_URL: "http://localhost:5174/save", // Usar o servidor Node local
   ONLINE_SERVER_URL: "", // Vazio = usa o mesmo domínio (relativo). Em dev local, use "http://localhost:5175"
