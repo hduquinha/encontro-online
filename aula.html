@@ -50,22 +50,33 @@
     .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; }
     .video-area iframe { width: 100%; height: 100%; display: block; border: none; }
 
-    /* Click shield — blocks YouTube UI clicks */
-    .click-shield { position: absolute; inset: 0; z-index: 5; cursor: pointer; }
-
-    /* Big play overlay */
-    .big-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.4); z-index: 10; transition: opacity .3s; }
-    .big-play.hidden { opacity: 0; pointer-events: none; }
-    .big-play-btn { width: 80px; height: 80px; background: rgba(var(--primary-rgb), .85); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(var(--primary-rgb), .5); transition: transform .2s; cursor: pointer; }
-    .big-play-btn:hover { transform: scale(1.1); }
-    .big-play-btn svg { width: 32px; height: 32px; fill: #fff; margin-left: 4px; }
-
-    /* Tab away overlay */
-    .tab-away-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 20; backdrop-filter: blur(6px); }
-    .tab-away-overlay.show { display: flex; }
-    .tab-away-overlay .icon { font-size: 2.5rem; }
-    .tab-away-overlay .msg { font-size: .88rem; color: #b8dadd; font-weight: 600; text-align: center; max-width: 320px; line-height: 1.4; }
-    .tab-away-overlay .btn-resume { background: var(--primary); color: #002b30; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: .88rem; cursor: pointer; font-family: inherit; }
+    /* Click shield blocks YouTube UI clicks */
+    .click-shield { position: absolute; inset: 0; z-index: 5; cursor: default; }
+    .live-gate { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.82)); z-index: 10; transition: opacity .3s; }
+    .live-gate.hidden { opacity: 0; pointer-events: none; }
+    .live-gate-card { width: min(100%, 440px); padding: 28px 26px; border-radius: 22px; background: rgba(7, 18, 19, .95); border: 1px solid #21484d; box-shadow: 0 16px 56px -18px rgba(0,0,0,.8); text-align: center; }
+    .live-gate-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: rgba(var(--primary-rgb), .16); color: #c8fbff; font-size: .7rem; font-weight: 700; letter-spacing: .5px; margin-bottom: 16px; }
+    .live-gate-pill::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #ff5858; box-shadow: 0 0 12px rgba(255,88,88,.7); }
+    .live-gate-pill[data-state="waiting"],
+    .live-status-badge[data-state="waiting"],
+    .nav-live[data-state="waiting"] { background: #132326; color: #9bd5da; }
+    .live-gate-pill[data-state="ended"],
+    .live-status-badge[data-state="ended"],
+    .nav-live[data-state="ended"] { background: #242d2f; color: #c6d1d3; }
+    .live-gate-pill[data-state="waiting"]::before,
+    .live-status-badge[data-state="waiting"]::before,
+    .nav-live[data-state="waiting"]::before { background: var(--primary); box-shadow: 0 0 12px rgba(var(--primary-rgb), .6); }
+    .live-gate-pill[data-state="ended"]::before,
+    .live-status-badge[data-state="ended"]::before,
+    .nav-live[data-state="ended"]::before { background: #98a6a8; box-shadow: none; }
+    .nav-live[data-state="waiting"]::before,
+    .nav-live[data-state="ended"]::before { animation: none; }
+    .live-gate-title { font-size: clamp(1.2rem, 3vw, 1.65rem); line-height: 1.2; color: #fff; margin-bottom: 10px; }
+    .live-gate-text { font-size: .9rem; color: #9bcfd4; line-height: 1.5; margin-bottom: 18px; }
+    .live-countdown { font-size: clamp(1.9rem, 5vw, 2.8rem); font-weight: 800; color: var(--primary); letter-spacing: .05em; font-variant-numeric: tabular-nums; margin-bottom: 18px; }
+    .live-gate-btn { width: 100%; background: var(--primary); border: none; color: #002b30; padding: 15px 18px; border-radius: 14px; font-family: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; transition: .25s; }
+    .live-gate-btn:hover { background: #33c0cb; }
+    .live-gate-btn:disabled { opacity: .55; cursor: not-allowed; }
 
     /* ===== CONTROLS BAR ===== */
     .controls { background: #0a1213; padding: 0; }
@@ -73,25 +84,25 @@
     /* Progress bar (view-only, no seeking) */
     .progress-wrap { position: relative; height: 6px; background: #1a2223; }
     .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width .5s linear; }
+    .progress-bar.live { background: linear-gradient(90deg, #ff5858, var(--primary)); box-shadow: 0 0 18px rgba(255,88,88,.28); }
 
     /* Buttons row */
-    .controls-row { display: flex; align-items: center; gap: 6px; padding: 8px 14px 10px; }
+    .controls-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px 14px; }
     .ctrl-btn { background: none; border: none; color: #b8dadd; cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: .2s; }
     .ctrl-btn:hover { background: #1a2e30; color: #fff; }
     .ctrl-btn svg { width: 20px; height: 20px; fill: currentColor; }
-    .ctrl-time { font-size: .72rem; color: #7fa6aa; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 100px; }
+    .live-status { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .live-status-badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: #182325; border: 1px solid #21484d; color: #d2fcff; font-size: .68rem; font-weight: 800; letter-spacing: .45px; white-space: nowrap; }
+    .live-status-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #ff5858; box-shadow: 0 0 12px rgba(255,88,88,.7); }
+    .ctrl-time { font-size: .76rem; color: #7fa6aa; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 0; }
     .ctrl-spacer { flex: 1; }
-    .ctrl-speed { background: #132326; border: 1px solid #204347; color: #9bd5da; padding: 4px 8px; border-radius: 8px; font-size: .65rem; font-weight: 700; cursor: pointer; font-family: inherit; min-width: 40px; text-align: center; }
-    .ctrl-speed:hover { background: #1d4045; color: #fff; }
-    .ctrl-vol-wrap { display: flex; align-items: center; gap: 4px; }
-    .ctrl-vol-slider { -webkit-appearance: none; width: 70px; height: 4px; background: #1a2223; border-radius: 4px; outline: none; cursor: pointer; }
-    .ctrl-vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--primary); border-radius: 50%; cursor: pointer; }
     .ctrl-fullscreen { margin-left: 2px; }
 
     /* Quality menu */
     .quality-menu { position: relative; display: inline-block; }
     .quality-btn { background: #132326; border: 1px solid #204347; color: #9bd5da; padding: 4px 8px; border-radius: 8px; font-size: .65rem; font-weight: 700; cursor: pointer; font-family: inherit; min-width: 50px; text-align: center; }
     .quality-btn:hover { background: #1d4045; color: #fff; }
+    .quality-btn:disabled { opacity: .55; cursor: not-allowed; }
     .quality-dropdown { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #0f1a1b; border: 1px solid #204347; border-radius: 10px; padding: 6px 0; margin-bottom: 6px; min-width: 100px; z-index: 50; }
     .quality-dropdown.show { display: block; }
     .quality-option { display: block; width: 100%; background: none; border: none; color: #9bd5da; padding: 6px 14px; font-size: .7rem; font-weight: 600; cursor: pointer; text-align: left; font-family: inherit; }
@@ -153,6 +164,10 @@
       .a-value { font-size: 1.2rem; }
       .engagement-ring { flex-direction: column; text-align: center; }
       .ring-info .ring-detail { justify-content: center; }
+      .controls-row { flex-wrap: wrap; }
+      .live-status { width: 100%; justify-content: space-between; }
+      .ctrl-spacer { display: none; }
+      .live-gate-card { padding: 22px 18px; }
     }
   </style>
 </head>
@@ -162,7 +177,7 @@
     <div class="nav-inner">
       <a href="encontro-online.html" class="nav-logo">Encontro <span>UP</span></a>
       <div class="nav-user">
-        <div class="nav-live">ASSISTINDO</div>
+        <div class="nav-live" id="liveBadge">AGUARDANDO</div>
         <span class="nav-name" id="userName">—</span>
         <button class="btn-logout" onclick="logout()">Sair</button>
       </div>
@@ -178,17 +193,14 @@
         <div id="ytPlayer"></div>
         <!-- Transparent shield blocks YouTube UI (prevents seeking) -->
         <div class="click-shield" id="clickShield"></div>
-        <!-- Big play button -->
-        <div class="big-play" id="bigPlay">
-          <div class="big-play-btn">
-            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <div class="live-gate" id="liveGate">
+          <div class="live-gate-card">
+            <span class="live-gate-pill" id="liveGatePill">AGUARDANDO</span>
+            <h1 class="live-gate-title" id="liveGateTitle">Carregando transmissão</h1>
+            <p class="live-gate-text" id="liveGateText">Estamos preparando a sala da live.</p>
+            <div class="live-countdown" id="liveCountdown">--:--:--</div>
+            <button class="live-gate-btn" id="liveJoinBtn" type="button" disabled>Entrar na transmissão</button>
           </div>
-        </div>
-        <!-- Tab away overlay -->
-        <div class="tab-away-overlay" id="tabAwayOverlay">
-          <div class="icon">👀</div>
-          <div class="msg">Parece que você saiu da aba.<br>O vídeo foi pausado automaticamente.</div>
-          <button class="btn-resume" id="btnResume">Continuar Assistindo</button>
         </div>
       </div>
 
@@ -198,32 +210,16 @@
         <div class="progress-wrap">
           <div class="progress-bar" id="progressBar"></div>
         </div>
-        <!-- Buttons -->
         <div class="controls-row">
-          <!-- Play/Pause -->
-          <button class="ctrl-btn" id="btnPlayPause" title="Play/Pause">
-            <svg id="iconPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            <svg id="iconPause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-          </button>
-          <!-- Time -->
-          <span class="ctrl-time" id="ctrlTime">0:00 / 0:00</span>
+          <div class="live-status">
+            <span class="live-status-badge" id="liveStatusBadge">AGUARDANDO</span>
+            <span class="ctrl-time" id="ctrlTime">A transmissão começa em instantes</span>
+          </div>
           <div class="ctrl-spacer"></div>
-          <!-- Speed -->
-          <button class="ctrl-speed" id="btnSpeed" title="Velocidade">1x</button>
-          <!-- Quality -->
           <div class="quality-menu" id="qualityMenu">
-            <button class="quality-btn" id="btnQuality" title="Qualidade">Auto</button>
+            <button class="quality-btn" id="btnQuality" title="Qualidade" disabled>Auto</button>
             <div class="quality-dropdown" id="qualityDropdown"></div>
           </div>
-          <!-- Volume -->
-          <div class="ctrl-vol-wrap">
-            <button class="ctrl-btn" id="btnMute" title="Mudo">
-              <svg id="iconVol" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-              <svg id="iconMuted" viewBox="0 0 24 24" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
-            </button>
-            <input type="range" class="ctrl-vol-slider" id="volSlider" min="0" max="100" step="5" value="100" />
-          </div>
-          <!-- Fullscreen -->
           <button class="ctrl-btn ctrl-fullscreen" id="btnFullscreen" title="Tela cheia">
             <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
           </button>
@@ -311,6 +307,8 @@
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
   const API_URL = window.FORM_CONFIG?.ONLINE_SERVER_URL ?? '';
+  const LIVE_START_AT = window.FORM_CONFIG?.LIVE_START_AT || '';
+  const LIVE_TIMEZONE = window.FORM_CONFIG?.LIVE_TIMEZONE || 'America/Sao_Paulo';
 
   // ===== AUTH =====
   const token = localStorage.getItem('up_token');
@@ -332,6 +330,8 @@
 
   const videoUrl = window.FORM_CONFIG?.VIDEO_URL || '';
   const ytVideoId = extractYTId(videoUrl);
+  const liveStartDate = LIVE_START_AT ? new Date(LIVE_START_AT) : null;
+  const liveMode = Boolean(liveStartDate && !Number.isNaN(liveStartDate.getTime()));
 
   // ===== FORMAT HELPERS =====
   function fmt(s) {
@@ -351,6 +351,25 @@
     return m < 60 ? m + ' min' : Math.floor(m/60) + 'h ' + (m%60) + 'min';
   }
 
+  function formatCountdown(ms) {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+  }
+
+  function formatLiveDate(date) {
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: LIVE_TIMEZONE
+    }).format(date).replace(',', ' às');
+  }
+
   // ===== TRACKING STATE =====
   const SEGMENTS = 100;
   let segmentWatchCount = new Array(SEGMENTS).fill(0);
@@ -367,24 +386,161 @@
   let pageStartTime = Date.now();
   let lastSyncTime = 0;
   let videoDuration = 0;
-  let maxAllowedTime = 0; // anti-skip: farthest time legitimately reached
+  let maxAllowedTime = 0;
+  let liveJoined = false;
+  let livePhase = 'waiting';
+  let resumeTimeoutId = 0;
 
   // ===== UI ELEMENTS =====
-  const bigPlay = document.getElementById('bigPlay');
-  const iconPlay = document.getElementById('iconPlay');
-  const iconPause = document.getElementById('iconPause');
-  const iconVol = document.getElementById('iconVol');
-  const iconMuted = document.getElementById('iconMuted');
+  const clickShield = document.getElementById('clickShield');
+  const liveGate = document.getElementById('liveGate');
+  const liveGatePill = document.getElementById('liveGatePill');
+  const liveGateTitle = document.getElementById('liveGateTitle');
+  const liveGateText = document.getElementById('liveGateText');
+  const liveCountdown = document.getElementById('liveCountdown');
+  const liveJoinBtn = document.getElementById('liveJoinBtn');
+  const liveBadge = document.getElementById('liveBadge');
+  const liveStatusBadge = document.getElementById('liveStatusBadge');
   const progressBar = document.getElementById('progressBar');
   const ctrlTime = document.getElementById('ctrlTime');
-  const volSlider = document.getElementById('volSlider');
-  const btnSpeed = document.getElementById('btnSpeed');
   const btnQuality = document.getElementById('btnQuality');
   const qualityDropdown = document.getElementById('qualityDropdown');
 
   // ===== YOUTUBE PLAYER =====
   let player = null;
   let playerReady = false;
+
+  function setGateVisible(visible) {
+    liveGate.classList.toggle('hidden', !visible);
+  }
+
+  function getLiveElapsedSeconds(now = Date.now()) {
+    if (!liveMode) return 0;
+    return Math.max(0, Math.floor((now - liveStartDate.getTime()) / 1000));
+  }
+
+  function getLiveTargetTime() {
+    if (!playerReady || !player) return 0;
+    if (!liveMode) return player.getCurrentTime();
+    const elapsed = getLiveElapsedSeconds();
+    return videoDuration > 0 ? Math.min(elapsed, Math.max(0, Math.floor(videoDuration))) : elapsed;
+  }
+
+  function getCurrentPhase() {
+    if (!liveMode) return 'live';
+    const diff = liveStartDate.getTime() - Date.now();
+    if (diff > 0) return 'waiting';
+    if (videoDuration > 0 && getLiveElapsedSeconds() >= Math.floor(videoDuration)) return 'ended';
+    return 'live';
+  }
+
+  function applyLiveState(state) {
+    liveBadge.dataset.state = state;
+    liveStatusBadge.dataset.state = state;
+    liveGatePill.dataset.state = state;
+  }
+
+  function updateLivePresentation() {
+    const nextPhase = getCurrentPhase();
+    const phaseChanged = nextPhase !== livePhase;
+    livePhase = nextPhase;
+    applyLiveState(livePhase);
+    clickShield.style.cursor = livePhase === 'live' && !liveJoined ? 'pointer' : 'default';
+
+    if (phaseChanged && playerReady && player && (livePhase === 'waiting' || livePhase === 'ended')) {
+      flushTick();
+      player.stopVideo();
+      isPlaying = false;
+    }
+
+    if (livePhase === 'waiting') {
+      const waitMs = liveMode ? liveStartDate.getTime() - Date.now() : 0;
+      const liveDateText = liveMode ? formatLiveDate(liveStartDate) : 'em instantes';
+      liveBadge.textContent = 'AGUARDANDO';
+      liveStatusBadge.textContent = 'AGUARDANDO';
+      liveGatePill.textContent = 'AGUARDANDO';
+      liveGateTitle.textContent = `A live começa ${liveDateText}`;
+      liveGateText.textContent = 'Fique nesta página. Quando chegar a hora, a transmissão será liberada.';
+      liveCountdown.textContent = formatCountdown(waitMs);
+      liveJoinBtn.textContent = 'Aguardando início';
+      liveJoinBtn.disabled = true;
+      ctrlTime.textContent = `A aula começa em ${formatCountdown(waitMs)}`;
+      progressBar.classList.remove('live');
+      progressBar.style.width = '0%';
+      setGateVisible(true);
+      return;
+    }
+
+    if (livePhase === 'ended') {
+      liveJoined = false;
+      liveBadge.textContent = 'ENCERRADA';
+      liveStatusBadge.textContent = 'ENCERRADA';
+      liveGatePill.textContent = 'ENCERRADA';
+      liveGateTitle.textContent = 'A transmissão foi encerrada';
+      liveGateText.textContent = 'Esta live já terminou. A reprodução continua bloqueada para manter o formato de evento ao vivo.';
+      liveCountdown.textContent = 'Até a próxima';
+      liveJoinBtn.textContent = 'Transmissão encerrada';
+      liveJoinBtn.disabled = true;
+      ctrlTime.textContent = 'Transmissão encerrada';
+      progressBar.classList.remove('live');
+      progressBar.style.width = '100%';
+      setGateVisible(true);
+      return;
+    }
+
+    liveBadge.textContent = 'AO VIVO';
+    liveStatusBadge.textContent = 'AO VIVO';
+    liveGatePill.textContent = 'AO VIVO';
+    liveGateTitle.textContent = 'A transmissão já está no ar';
+    liveGateText.textContent = playerReady
+      ? 'Clique abaixo para entrar na sala ao vivo. Não há pausa manual nem retorno ao início.'
+      : 'A sala ao vivo está abrindo. Aguarde alguns segundos.';
+    liveCountdown.textContent = liveMode ? `No ar há ${fmt(getLiveElapsedSeconds())}` : 'AO VIVO';
+    liveJoinBtn.textContent = playerReady ? 'Entrar na transmissão' : 'Carregando transmissão';
+    liveJoinBtn.disabled = !playerReady;
+    ctrlTime.textContent = liveMode ? `No ar há ${fmt(getLiveElapsedSeconds())}` : 'Transmissão em andamento';
+    progressBar.classList.add('live');
+    setGateVisible(!liveJoined);
+  }
+
+  function syncPlayerToLive(force = false) {
+    if (!playerReady || !player || livePhase !== 'live') return;
+    if (!liveMode) {
+      const current = player.getCurrentTime();
+      maxAllowedTime = current;
+      farthestPoint = Math.max(farthestPoint, current);
+      return;
+    }
+
+    const target = getLiveTargetTime();
+    const current = player.getCurrentTime();
+    maxAllowedTime = target;
+    farthestPoint = Math.max(farthestPoint, target);
+
+    if (force || Math.abs(current - target) > 4) {
+      player.seekTo(target, true);
+    }
+  }
+
+  function scheduleResume() {
+    window.clearTimeout(resumeTimeoutId);
+    resumeTimeoutId = window.setTimeout(() => {
+      if (!playerReady || !player || !liveJoined || livePhase !== 'live') return;
+      syncPlayerToLive(true);
+      player.playVideo();
+    }, 250);
+  }
+
+  function joinLive() {
+    if (!playerReady || livePhase !== 'live') return;
+    liveJoined = true;
+    currentSpeed = 1;
+    player.setPlaybackRate(1);
+    syncPlayerToLive(true);
+    setGateVisible(false);
+    player.playVideo();
+    scheduleResume();
+  }
 
   window.onYouTubeIframeAPIReady = function() {
     if (!ytVideoId) return;
@@ -409,12 +565,17 @@
     });
   };
 
-  function onPlayerReady(event) {
+  function onPlayerReady() {
     playerReady = true;
     videoDuration = player.getDuration();
+    player.setPlaybackRate(1);
+    btnQuality.disabled = false;
     setTimeout(buildQualityMenu, 2000);
     startTrackingInterval();
-    loadWatchData();
+    loadWatchData().finally(() => {
+      updateLivePresentation();
+      updateUI();
+    });
   }
 
   function onPlayerStateChange(event) {
@@ -423,69 +584,24 @@
     if (state === YT.PlayerState.PLAYING) {
       isPlaying = true;
       lastTickTime = Date.now();
-      bigPlay.classList.add('hidden');
-      iconPlay.style.display = 'none';
-      iconPause.style.display = 'block';
+      currentSpeed = 1;
       if (!videoDuration) videoDuration = player.getDuration();
+      syncPlayerToLive();
 
     } else if (state === YT.PlayerState.PAUSED) {
       flushTick();
       isPlaying = false;
-      iconPlay.style.display = 'block';
-      iconPause.style.display = 'none';
-      syncToServer();
+      if (liveJoined && livePhase === 'live') scheduleResume();
+      else syncToServer();
 
     } else if (state === YT.PlayerState.ENDED) {
       flushTick();
       isPlaying = false;
       completed = true;
-      iconPlay.style.display = 'block';
-      iconPause.style.display = 'none';
-      bigPlay.classList.remove('hidden');
       syncToServer(true);
+      updateLivePresentation();
     }
   }
-
-  // ===== ANTI-SKIP: prevent forward seeking =====
-  function enforceAntiSkip() {
-    if (!playerReady || !player) return;
-    const ct = player.getCurrentTime();
-
-    if (ct > maxAllowedTime + 3) {
-      // User tried to skip ahead — send them back
-      player.seekTo(maxAllowedTime, true);
-      forwardSkips++;
-    } else if (ct > maxAllowedTime) {
-      maxAllowedTime = ct;
-    }
-  }
-
-  // ===== PLAY / PAUSE =====
-  function togglePlay() {
-    if (!playerReady) return;
-    const state = player.getPlayerState();
-    if (state === YT.PlayerState.PLAYING) {
-      player.pauseVideo();
-    } else {
-      player.playVideo();
-    }
-  }
-
-  document.getElementById('clickShield').addEventListener('click', togglePlay);
-  bigPlay.addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
-  document.getElementById('btnPlayPause').addEventListener('click', togglePlay);
-
-  // ===== SPEED =====
-  const speeds = [1, 1.25, 1.5, 2];
-  let speedIdx = 0;
-
-  btnSpeed.addEventListener('click', () => {
-    if (!playerReady) return;
-    speedIdx = (speedIdx + 1) % speeds.length;
-    currentSpeed = speeds[speedIdx];
-    player.setPlaybackRate(currentSpeed);
-    btnSpeed.textContent = currentSpeed + 'x';
-  });
 
   // ===== QUALITY =====
   const qualityLabels = {
@@ -528,37 +644,14 @@
 
   btnQuality.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (btnQuality.disabled) return;
     qualityDropdown.classList.toggle('show');
   });
   document.addEventListener('click', () => qualityDropdown.classList.remove('show'));
-
-  // ===== VOLUME =====
-  volSlider.addEventListener('input', () => {
-    if (!playerReady) return;
-    const vol = parseInt(volSlider.value);
-    player.setVolume(vol);
-    if (vol === 0) player.mute(); else player.unMute();
-    updateVolumeIcon();
+  liveJoinBtn.addEventListener('click', joinLive);
+  clickShield.addEventListener('click', () => {
+    if (!liveJoined && livePhase === 'live') joinLive();
   });
-
-  document.getElementById('btnMute').addEventListener('click', () => {
-    if (!playerReady) return;
-    if (player.isMuted()) {
-      player.unMute();
-      volSlider.value = player.getVolume();
-    } else {
-      player.mute();
-      volSlider.value = 0;
-    }
-    updateVolumeIcon();
-  });
-
-  function updateVolumeIcon() {
-    if (!playerReady) return;
-    const muted = player.isMuted() || player.getVolume() === 0;
-    iconVol.style.display = muted ? 'none' : 'block';
-    iconMuted.style.display = muted ? 'block' : 'none';
-  }
 
   // ===== FULLSCREEN =====
   document.getElementById('btnFullscreen').addEventListener('click', () => {
@@ -567,70 +660,84 @@
     else pc.requestFullscreen();
   });
 
-  // ===== TAB VISIBILITY — pause on tab away =====
+  // ===== TAB VISIBILITY =====
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       tabBlurStart = Date.now();
-      if (isPlaying && playerReady) {
-        flushTick();
-        player.pauseVideo();
-        document.getElementById('tabAwayOverlay').classList.add('show');
-      }
-    } else {
-      if (tabBlurStart > 0) {
-        tabBlurTotal += Date.now() - tabBlurStart;
-        tabBlurStart = 0;
-      }
+      return;
     }
-  });
 
-  document.getElementById('btnResume').addEventListener('click', () => {
-    document.getElementById('tabAwayOverlay').classList.remove('show');
-    if (playerReady) player.playVideo();
+    if (tabBlurStart > 0) {
+      tabBlurTotal += Date.now() - tabBlurStart;
+      tabBlurStart = 0;
+    }
+
+    if (liveJoined && livePhase === 'live') scheduleResume();
   });
 
   // ===== ACCUMULATE REAL WATCH TIME =====
   function flushTick() {
-    if (isPlaying && lastTickTime > 0) {
-      const delta = (Date.now() - lastTickTime) / 1000;
-      totalRealSeconds += Math.min(delta, 35);
-      lastTickTime = Date.now();
-    }
+    if (!isPlaying || lastTickTime <= 0) return;
+    const delta = (Date.now() - lastTickTime) / 1000;
+    totalRealSeconds += Math.min(delta, 35);
+    lastTickTime = Date.now();
   }
 
   // ===== SEGMENT TRACKING =====
   function getSegmentIndex(time) {
-    const dur = videoDuration || 1;
-    return Math.min(SEGMENTS - 1, Math.floor((time / dur) * SEGMENTS));
+    const duration = videoDuration || 1;
+    return Math.min(SEGMENTS - 1, Math.floor((time / duration) * SEGMENTS));
+  }
+
+  function getFocusPercent() {
+    const totalPageTime = (Date.now() - pageStartTime) / 1000;
+    const hiddenMs = tabBlurTotal + (tabBlurStart > 0 ? Date.now() - tabBlurStart : 0);
+    return totalPageTime > 0 ? Math.round(((totalPageTime - hiddenMs / 1000) / totalPageTime) * 100) : 100;
+  }
+
+  function getReportedCurrentTime() {
+    if (!playerReady || !player) return 0;
+    if (livePhase === 'ended' && (liveJoined || completed)) return Math.round(videoDuration || 0);
+    if (livePhase === 'live' && liveMode) return Math.round(getLiveTargetTime());
+    return Math.round(player.getCurrentTime());
   }
 
   // ===== MAIN TRACKING INTERVAL =====
   function startTrackingInterval() {
     setInterval(() => {
-      if (!playerReady) return;
+      updateLivePresentation();
+      if (!playerReady || !player) return;
 
-      const ct = player.getCurrentTime();
-      const dur = player.getDuration() || 0;
-      if (dur > 0) videoDuration = dur;
+      const duration = player.getDuration() || 0;
+      if (duration > 0) videoDuration = duration;
 
-      // Anti-skip
-      enforceAntiSkip();
+      if (liveJoined && livePhase === 'live') {
+        const state = player.getPlayerState();
+        if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+          scheduleResume();
+        }
+        syncPlayerToLive();
+      }
 
       if (isPlaying) {
         flushTick();
-        const seg = getSegmentIndex(ct);
-        segmentWatchCount[seg]++;
-        if (ct > farthestPoint) farthestPoint = ct;
+        const trackingPoint = livePhase === 'live' && liveMode ? getLiveTargetTime() : player.getCurrentTime();
+        const segment = getSegmentIndex(trackingPoint);
+        segmentWatchCount[segment]++;
+        farthestPoint = Math.max(farthestPoint, trackingPoint);
+        maxAllowedTime = Math.max(maxAllowedTime, trackingPoint);
       }
 
-      // Progress bar (view-only)
-      const pct = dur > 0 ? (ct / dur) * 100 : 0;
-      progressBar.style.width = pct + '%';
-      ctrlTime.textContent = `${fmt(ct)} / ${fmt(dur)}`;
+      let timelinePoint = player.getCurrentTime();
+      if (livePhase === 'waiting') timelinePoint = 0;
+      if (livePhase === 'live' && liveMode) timelinePoint = getLiveTargetTime();
+      if (livePhase === 'ended') timelinePoint = duration;
+
+      const pct = duration > 0 ? (timelinePoint / duration) * 100 : 0;
+      progressBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
 
       updateUI();
 
-      // Sync every 5s (near real-time for dashboard)
       if (Date.now() - lastSyncTime > 5000 && totalRealSeconds > 0) {
         syncToServer();
       }
@@ -661,8 +768,7 @@
       document.getElementById('engDesc').textContent = 'Continue assistindo para completar a aula. Cada minuto conta!';
     }
 
-    const totalPageTime = (Date.now() - pageStartTime) / 1000;
-    const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
+    const focusPct = getFocusPercent();
     document.getElementById('detailRealTime').textContent = '⏱ Real: ' + fmtMin(totalRealSeconds);
     document.getElementById('detailSessions').textContent = '🔄 Sessões: ' + sessionCount;
     document.getElementById('detailSpeed').textContent = '⚡ Velocidade: ' + currentSpeed + 'x';
@@ -680,15 +786,14 @@
 
     const watchedSegments = segmentWatchCount.filter(c => c > 0).length;
     const coveragePct = videoDuration > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
-    const totalPageTime = (Date.now() - pageStartTime) / 1000;
-    const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
+    const focusPct = getFocusPercent();
 
     const payload = {
       totalWatchedSeconds: Math.round(totalRealSeconds),
-      currentTime: Math.round(playerReady ? player.getCurrentTime() : 0),
+      currentTime: getReportedCurrentTime(),
       duration: Math.round(videoDuration),
       percentWatched: coveragePct,
-      completed: final || coveragePct >= 90,
+      completed: final || completed || coveragePct >= 90,
       farthestPoint: Math.round(farthestPoint),
       forwardSkips,
       rewatchCount: 0,
@@ -711,15 +816,14 @@
     flushTick();
     const watchedSegments = segmentWatchCount.filter(c => c > 0).length;
     const coveragePct = videoDuration > 0 ? Math.round((watchedSegments / SEGMENTS) * 100) : 0;
-    const totalPageTime = (Date.now() - pageStartTime) / 1000;
-    const focusPct = totalPageTime > 0 ? Math.round(((totalPageTime - tabBlurTotal / 1000) / totalPageTime) * 100) : 100;
+    const focusPct = getFocusPercent();
 
     const payload = JSON.stringify({
       totalWatchedSeconds: Math.round(totalRealSeconds),
-      currentTime: Math.round(playerReady ? player.getCurrentTime() : 0),
+      currentTime: getReportedCurrentTime(),
       duration: Math.round(videoDuration),
       percentWatched: coveragePct,
-      completed: coveragePct >= 90,
+      completed: completed || coveragePct >= 90,
       farthestPoint: Math.round(farthestPoint),
       forwardSkips,
       rewatchCount: 0,
@@ -737,11 +841,10 @@
   // ===== KEYBOARD SHORTCUTS =====
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
-    switch (e.key) {
-      case ' ': case 'k': e.preventDefault(); togglePlay(); break;
-      case 'f': document.getElementById('btnFullscreen').click(); break;
-      case 'm': document.getElementById('btnMute').click(); break;
-      // Arrow keys NOT mapped — no seeking allowed
+    if (e.key === 'f') document.getElementById('btnFullscreen').click();
+    if (e.key === 'Enter' && !liveJoined && livePhase === 'live') {
+      e.preventDefault();
+      joinLive();
     }
   });
 
@@ -756,15 +859,12 @@
         if (data.totalWatchedSeconds) totalRealSeconds = data.totalWatchedSeconds;
         if (data.farthestPoint) {
           farthestPoint = data.farthestPoint;
-          maxAllowedTime = data.farthestPoint; // allow resuming from saved position
+          maxAllowedTime = data.farthestPoint;
         }
         if (data.forwardSkips) forwardSkips = data.forwardSkips;
         if (data.sessions) sessionCount = data.sessions + 1;
         if (data.segmentData && Array.isArray(data.segmentData) && data.segmentData.length === SEGMENTS) {
           segmentWatchCount = data.segmentData;
-        }
-        if (data.currentTime && data.currentTime > 0 && playerReady) {
-          player.seekTo(data.currentTime, true);
         }
         updateUI();
       }
@@ -786,6 +886,8 @@
       setTimeout(() => notesSaved.classList.remove('show'), 2000);
     }, 500);
   });
+
+  updateLivePresentation();
 
   </script>
 </body>

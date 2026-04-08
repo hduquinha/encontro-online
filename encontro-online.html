@@ -53,7 +53,11 @@
     .hero-badge { display: inline-block; background: rgba(var(--primary-rgb), .08); border: 1px solid #1d3f43; padding: 8px 18px; border-radius: 40px; font-size: .72rem; font-weight: 600; letter-spacing: .7px; color: #9bd5da; text-transform: uppercase; margin-bottom: 20px; }
     .hero h1 { font-size: clamp(2rem, 4vw, 3rem); color: var(--primary); line-height: 1.1; letter-spacing: -.5px; text-shadow: 0 3px 14px rgba(var(--primary-rgb), .28); margin-bottom: 12px; }
     .hero h1 .white { color: #fff; }
-    .hero-sub { color: var(--muted); font-size: clamp(.95rem, 1.5vw, 1.15rem); max-width: 680px; margin: 0 auto 36px; }
+    .hero-sub { color: var(--muted); font-size: clamp(.95rem, 1.5vw, 1.15rem); max-width: 680px; margin: 0 auto 24px; }
+    .hero-countdown { display: inline-flex; flex-direction: column; gap: 6px; padding: 18px 24px; margin: 0 auto 34px; border-radius: 18px; background: rgba(7, 18, 19, .92); border: 1px solid #1d3f43; box-shadow: 0 16px 50px -24px rgba(0,0,0,.85); }
+    .hero-countdown-label { font-size: .72rem; letter-spacing: .45px; text-transform: uppercase; color: #7fa6aa; }
+    .hero-countdown-value { font-size: clamp(1.8rem, 4vw, 2.7rem); font-weight: 800; color: #fff; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+    .hero-countdown-meta { font-size: .82rem; color: #9bd5da; }
 
     /* ===== VIDEO PREVIEW ===== */
     .video-preview { position: relative; max-width: 780px; margin: 0 auto 48px; border-radius: 22px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); aspect-ratio: 16/9; background: #0a1415; cursor: pointer; }
@@ -125,31 +129,36 @@
   <nav class="nav">
     <div class="container nav-inner">
       <a href="#" class="nav-logo">Encontro <span>UP</span></a>
-      <a href="#acesso" class="btn-access" style="width:auto;padding:10px 20px;font-size:.8rem;margin:0;">Acessar Aula</a>
+      <a href="#acesso" class="btn-access" style="width:auto;padding:10px 20px;font-size:.8rem;margin:0;">Entrar na Live</a>
     </div>
   </nav>
 
   <!-- HERO -->
   <section class="hero">
     <div class="container">
-      <div class="hero-badge">🎓 Encontro Online Disponível</div>
+      <div class="hero-badge" id="heroBadge">Transmissão ao vivo agendada</div>
       <h1>Encontro UP<br><span class="white">Construindo Uma Vida Mais Leve</span></h1>
-      <p class="hero-sub">Assista ao encontro completo de <strong>Inteligência Emocional</strong> com dinâmica de alto impacto e exercício guiado para controlar a ansiedade. Conduzido por <strong>Rodrigo Damaceno</strong>.</p>
+      <p class="hero-sub" id="heroSub">A sala abre em formato de live e a aula entra no ar no horário marcado. Antes disso, você acompanha a contagem regressiva e se prepara para assistir ao encontro com Rodrigo Damaceno.</p>
+      <div class="hero-countdown" id="heroCountdownCard">
+        <span class="hero-countdown-label" id="heroCountdownLabel">A aula começa em</span>
+        <strong class="hero-countdown-value" id="heroCountdownValue">--:--:--</strong>
+        <span class="hero-countdown-meta" id="heroCountdownMeta">Carregando horário da live...</span>
+      </div>
 
       <!-- Video Preview -->
       <div class="video-preview" id="videoPreview" onclick="document.getElementById('acesso').scrollIntoView({behavior:'smooth'})">
         <div style="width:100%;height:100%;background:linear-gradient(135deg,#0a1a1c,#0f2a2e);display:flex;align-items:center;justify-content:center;">
           <div style="text-align:center;">
             <div style="font-size:3rem;margin-bottom:8px;">🧠</div>
-            <div style="font-size:1.1rem;font-weight:700;color:var(--primary);">Encontro UP Online</div>
-            <div style="font-size:.78rem;color:#7fa6aa;margin-top:4px;">Inteligência Emocional na Prática</div>
+            <div style="font-size:1.1rem;font-weight:700;color:var(--primary);">Live Encontro UP</div>
+            <div style="font-size:.78rem;color:#7fa6aa;margin-top:4px;" id="previewSchedule">Sala aguardando abertura</div>
           </div>
         </div>
         <div class="video-lock">
           <div class="play-btn">
             <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </div>
-          <span class="video-lock-text">🔒 Identifique-se para assistir</span>
+          <span class="video-lock-text" id="videoLockText">🔒 Identifique-se para entrar na live</span>
         </div>
       </div>
     </div>
@@ -175,8 +184,8 @@
   <section class="access-section" id="acesso">
     <div class="container">
       <div class="access-card">
-        <h2>🔓 Acesse a Aula</h2>
-        <p class="access-sub">Identifique-se e insira a senha de acesso para assistir o encontro</p>
+        <h2>🔓 Acesse a Live</h2>
+        <p class="access-sub">Identifique-se e insira a senha de acesso para entrar na sala da transmissão</p>
         <form id="formAccess" autocomplete="off" novalidate>
           <div class="field">
             <label for="accessName">Nome Completo</label>
@@ -194,7 +203,7 @@
             <button type="button" class="toggle-pw" onclick="togglePw('accessPassword', this)">mostrar</button>
             <span class="error-msg">Informe a senha de acesso</span>
           </div>
-          <button type="submit" class="btn-access" id="btnAccess">Entrar e Assistir</button>
+          <button type="submit" class="btn-access" id="btnAccess">Entrar na Sala</button>
           <div class="form-status" id="accessStatus"></div>
         </form>
       </div>
@@ -217,9 +226,69 @@
   <script src="config.js"></script>
   <script>
     const API_URL = window.FORM_CONFIG?.ONLINE_SERVER_URL ?? '';
+    const LIVE_START_AT = window.FORM_CONFIG?.LIVE_START_AT || '';
+    const LIVE_TIMEZONE = window.FORM_CONFIG?.LIVE_TIMEZONE || 'America/Sao_Paulo';
   </script>
 
   <script>
+    const liveStartDate = LIVE_START_AT ? new Date(LIVE_START_AT) : null;
+    const heroBadge = document.getElementById('heroBadge');
+    const heroSub = document.getElementById('heroSub');
+    const heroCountdownValue = document.getElementById('heroCountdownValue');
+    const heroCountdownMeta = document.getElementById('heroCountdownMeta');
+    const heroCountdownLabel = document.getElementById('heroCountdownLabel');
+    const previewSchedule = document.getElementById('previewSchedule');
+    const videoLockText = document.getElementById('videoLockText');
+
+    function formatLiveDate(date) {
+      return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: LIVE_TIMEZONE
+      }).format(date).replace(',', ' às');
+    }
+
+    function formatCountdown(ms) {
+      const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function updateLiveCountdown() {
+      if (!liveStartDate || Number.isNaN(liveStartDate.getTime())) return;
+
+      const now = Date.now();
+      const diff = liveStartDate.getTime() - now;
+      const liveDateText = formatLiveDate(liveStartDate);
+
+      heroCountdownMeta.textContent = `Transmissão marcada para ${liveDateText}`;
+
+      if (diff > 0) {
+        heroBadge.textContent = 'Transmissão ao vivo agendada';
+        heroSub.textContent = 'A sala abre em formato de live e a aula entra no ar no horário marcado. Antes disso, você acompanha a contagem regressiva e se prepara para assistir ao encontro com Rodrigo Damaceno.';
+        heroCountdownLabel.textContent = 'A aula começa em';
+        heroCountdownValue.textContent = formatCountdown(diff);
+        previewSchedule.textContent = `Ao vivo em ${liveDateText}`;
+        videoLockText.textContent = '🔒 Identifique-se para entrar na live';
+        return;
+      }
+
+      heroBadge.textContent = 'Transmissão ao vivo liberada';
+      heroSub.textContent = 'A live já começou. Ao entrar, você acompanha a transmissão no ponto exato em que ela está, sem pausa manual.';
+      heroCountdownLabel.textContent = 'A live está no ar';
+      heroCountdownValue.textContent = 'AO VIVO';
+      previewSchedule.textContent = `No ar desde ${liveDateText}`;
+      videoLockText.textContent = '🔴 Identifique-se para entrar na transmissão';
+    }
+
+    updateLiveCountdown();
+    setInterval(updateLiveCountdown, 1000);
+
     // ===== PHONE MASK =====
     function phoneMask(input) {
       input.addEventListener('input', () => {
