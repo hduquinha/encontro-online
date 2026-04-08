@@ -43,6 +43,7 @@
     .nav-live { font-size: .62rem; font-weight: 700; color: #fff; background: var(--primary); padding: 4px 10px; border-radius: 20px; letter-spacing: .5px; display: flex; align-items: center; gap: 5px; }
     .nav-live::before { content: ''; width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: blink 1.5s infinite; }
     @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .btn-logout { background: #173337; border: 1px solid #1f4d52; color: #b8dadd; padding: 8px 14px; border-radius: 10px; font-size: .72rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: .25s; }
     .btn-logout:hover { background: #1d4045; color: #fff; }
 
@@ -54,12 +55,18 @@
     .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; }
     body.player-fullscreen .video-area { height: calc(100vh - 88px); aspect-ratio: auto; }
     .video-area iframe { width: 100%; height: 100%; display: block; border: none; }
+    .video-poster { position: absolute; inset: 0; z-index: 1; background: #020607 center / cover no-repeat; opacity: 1; transition: opacity .24s ease; }
+    .video-poster.hidden { opacity: 0; pointer-events: none; }
     #ytPlayer { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .22s ease, visibility .22s ease; }
     #ytPlayer.player-visible { opacity: 1; visibility: visible; }
     #ytPlayer iframe { pointer-events: none; }
 
     /* Click shield blocks YouTube UI clicks */
     .click-shield { position: absolute; inset: 0; z-index: 5; cursor: default; }
+    .video-loading { position: absolute; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(circle at center, rgba(0,0,0,.18), rgba(0,0,0,.62)); opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+    .video-loading.show { opacity: 1; }
+    .video-loading-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 999px; background: rgba(4, 14, 16, .92); border: 1px solid #21484d; color: #d9feff; font-size: .78rem; font-weight: 700; box-shadow: 0 18px 44px -24px rgba(0,0,0,.88); }
+    .video-spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(217, 254, 255, .28); border-top-color: var(--primary); animation: spin .8s linear infinite; }
     .live-gate { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.82)); z-index: 10; transition: opacity .3s; }
     .live-gate.hidden { opacity: 0; pointer-events: none; }
     .live-gate-card { width: min(100%, 440px); padding: 28px 26px; border-radius: 22px; background: rgba(7, 18, 19, .95); border: 1px solid #21484d; box-shadow: 0 16px 56px -18px rgba(0,0,0,.8); text-align: center; }
@@ -215,9 +222,16 @@
     <div class="player-container" id="playerContainer">
       <div class="video-area" id="videoArea">
         <!-- YouTube player injected here -->
+        <div class="video-poster" id="videoPoster"></div>
         <div id="ytPlayer"></div>
         <!-- Transparent shield blocks YouTube UI (prevents seeking) -->
         <div class="click-shield" id="clickShield"></div>
+        <div class="video-loading" id="videoLoading" aria-live="polite">
+          <div class="video-loading-card">
+            <span class="video-spinner" aria-hidden="true"></span>
+            <span id="videoLoadingText">Carregando video...</span>
+          </div>
+        </div>
         <div class="live-gate" id="liveGate">
           <div class="live-gate-card">
             <span class="live-gate-pill" id="liveGatePill">AGUARDANDO</span>
@@ -420,12 +434,17 @@
   let liveJoined = false;
   let livePhase = 'waiting';
   let resumeTimeoutId = 0;
+  let playbackRecoveryTimeoutId = 0;
+  let hasStartedPlayback = false;
   let lastVolumeBeforeMute = 100;
 
   // ===== UI ELEMENTS =====
   const playerContainer = document.getElementById('playerContainer');
   const clickShield = document.getElementById('clickShield');
+  const videoPoster = document.getElementById('videoPoster');
   const ytPlayerHost = document.getElementById('ytPlayer');
+  const videoLoading = document.getElementById('videoLoading');
+  const videoLoadingText = document.getElementById('videoLoadingText');
   const liveGate = document.getElementById('liveGate');
   const liveGatePill = document.getElementById('liveGatePill');
   const liveGateTitle = document.getElementById('liveGateTitle');
@@ -496,6 +515,41 @@
 
   function setPlayerSurfaceVisible(visible) {
     ytPlayerHost.classList.toggle('player-visible', visible);
+  }
+
+  function setPosterVisible(visible) {
+    videoPoster.classList.toggle('hidden', !visible);
+  }
+
+  function setPosterImage() {
+    if (!ytVideoId) {
+      setPosterVisible(false);
+      return;
+    }
+    videoPoster.style.backgroundImage = `linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.48)), url("https://i.ytimg.com/vi/${ytVideoId}/hqdefault.jpg")`;
+    setPosterVisible(true);
+  }
+
+  function setLoadingState(active, text = 'Carregando video...') {
+    videoLoading.classList.toggle('show', active);
+    videoLoadingText.textContent = text;
+  }
+
+  function clearPlaybackRecovery() {
+    window.clearTimeout(playbackRecoveryTimeoutId);
+    playbackRecoveryTimeoutId = 0;
+  }
+
+  function queuePlaybackRecovery() {
+    clearPlaybackRecovery();
+    if (!liveJoined || !playerReady || !player || !ytVideoId) return;
+
+    playbackRecoveryTimeoutId = window.setTimeout(() => {
+      if (!liveJoined || !playerReady || !player || hasStartedPlayback) return;
+      const retryTarget = getLiveTargetTime();
+      player.loadVideoById(ytVideoId, retryTarget);
+      setLoadingState(true, 'Reconectando video...');
+    }, 3500);
   }
 
   function setButtonIcon(button, iconMarkup, label) {
@@ -590,8 +644,9 @@
   function getLiveTargetTime() {
     if (!playerReady || !player) return 0;
     if (!liveMode) return player.getCurrentTime();
+    if (videoDuration <= 0) return 0;
     const elapsed = getLiveElapsedSeconds();
-    return videoDuration > 0 ? Math.min(elapsed, Math.max(0, Math.floor(videoDuration))) : elapsed;
+    return Math.min(elapsed, Math.max(0, Math.floor(videoDuration) - 1));
   }
 
   function getCurrentPhase() {
@@ -619,6 +674,8 @@
       flushTick();
       player.stopVideo();
       isPlaying = false;
+      hasStartedPlayback = false;
+      clearPlaybackRecovery();
     }
 
     if (livePhase === 'waiting') {
@@ -635,6 +692,8 @@
       ctrlTime.textContent = `A aula começa em ${formatCountdown(waitMs)}`;
       progressBar.classList.remove('live');
       progressBar.style.width = '0%';
+      setLoadingState(false);
+      setPosterVisible(true);
       setGateVisible(true);
       return;
     }
@@ -652,6 +711,8 @@
       ctrlTime.textContent = 'Transmissão encerrada';
       progressBar.classList.remove('live');
       progressBar.style.width = '100%';
+      setLoadingState(false);
+      setPosterVisible(true);
       setGateVisible(true);
       return;
     }
@@ -668,6 +729,10 @@
     liveJoinBtn.disabled = !playerReady;
     ctrlTime.textContent = liveMode ? `No ar há ${fmt(getLiveElapsedSeconds())}` : 'Transmissão em andamento';
     progressBar.classList.add('live');
+    if (!liveJoined) {
+      setLoadingState(false);
+      setPosterVisible(true);
+    }
     setGateVisible(!liveJoined);
   }
 
@@ -696,18 +761,27 @@
       if (!playerReady || !player || !liveJoined || livePhase !== 'live') return;
       syncPlayerToLive(true);
       player.playVideo();
+      queuePlaybackRecovery();
     }, 250);
   }
 
   function joinLive() {
     if (!playerReady || livePhase !== 'live') return;
     liveJoined = true;
+    hasStartedPlayback = false;
     currentSpeed = 1;
     player.setPlaybackRate(1);
     setPlayerSurfaceVisible(true);
-    syncPlayerToLive(true);
+    setPosterVisible(true);
+    setLoadingState(true, 'Abrindo transmissao...');
     setGateVisible(false);
-    player.playVideo();
+    if (ytVideoId && typeof player.loadVideoById === 'function') {
+      player.loadVideoById(ytVideoId, getLiveTargetTime());
+    } else {
+      syncPlayerToLive(true);
+      player.playVideo();
+    }
+    queuePlaybackRecovery();
     scheduleResume();
   }
 
@@ -743,6 +817,8 @@
     videoDuration = player.getDuration();
     player.setPlaybackRate(1);
     setPlayerSurfaceVisible(true);
+    setPosterImage();
+    setLoadingState(false);
     applyVolume(getSavedVolume(), false);
     btnQuality.disabled = false;
     setTimeout(buildQualityMenu, 2000);
@@ -758,26 +834,44 @@
 
     if (state === YT.PlayerState.PLAYING) {
       isPlaying = true;
+      hasStartedPlayback = true;
       lastTickTime = Date.now();
       currentSpeed = 1;
       if (!videoDuration) videoDuration = player.getDuration();
       setPlayerSurfaceVisible(true);
+      setPosterVisible(false);
+      setLoadingState(false);
+      clearPlaybackRecovery();
       syncPlayerToLive();
 
     } else if (state === YT.PlayerState.BUFFERING) {
       if (!videoDuration) videoDuration = player.getDuration();
       setPlayerSurfaceVisible(true);
+      setLoadingState(true, hasStartedPlayback ? 'Conectando...' : 'Carregando video...');
+      if (!hasStartedPlayback) setPosterVisible(true);
+      queuePlaybackRecovery();
 
     } else if (state === YT.PlayerState.PAUSED) {
       flushTick();
       isPlaying = false;
-      if (liveJoined && livePhase === 'live') scheduleResume();
-      else syncToServer();
+      if (!hasStartedPlayback) setPosterVisible(true);
+      if (liveJoined && livePhase === 'live') {
+        setLoadingState(true, 'Reconectando video...');
+        scheduleResume();
+      }
+      else {
+        setLoadingState(false);
+        syncToServer();
+      }
 
     } else if (state === YT.PlayerState.ENDED) {
       flushTick();
       isPlaying = false;
+      hasStartedPlayback = false;
       completed = true;
+      setPosterVisible(true);
+      setLoadingState(false);
+      clearPlaybackRecovery();
       syncToServer(true);
       updateLivePresentation();
     }
