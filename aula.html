@@ -29,6 +29,12 @@
       min-height: 100vh;
       line-height: 1.5;
     }
+    body.theater-mode {
+      background: #000;
+    }
+    body.player-fullscreen {
+      background: #000;
+    }
 
     /* NAV */
     .nav { padding: 14px 0; border-bottom: 1px solid #1e2627; background: rgba(0,0,0,.5); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
@@ -44,10 +50,14 @@
     .btn-logout:hover { background: #1d4045; color: #fff; }
 
     .main { max-width: 960px; margin: 0 auto; padding: 24px; }
+    body.theater-mode .main { max-width: 1280px; }
 
     /* ===== CUSTOM VIDEO PLAYER ===== */
     .player-container { margin-bottom: 24px; border-radius: 20px; overflow: hidden; border: 2px solid #1e3336; box-shadow: 0 12px 56px -10px rgba(0,0,0,.7); background: #000; position: relative; }
+    body.theater-mode .player-container { width: min(100%, 1280px); margin-inline: auto; border-color: #265055; box-shadow: 0 24px 80px -24px rgba(0,0,0,.9); }
+    body.player-fullscreen .player-container { width: 100%; height: 100%; border-radius: 0; border: none; box-shadow: none; }
     .video-area { position: relative; width: 100%; aspect-ratio: 16/9; background: #050a0b; }
+    body.player-fullscreen .video-area { height: calc(100vh - 88px); aspect-ratio: auto; }
     .video-area iframe { width: 100%; height: 100%; display: block; border: none; }
     #ytPlayer { position: absolute; inset: 0; opacity: 0; transition: opacity .22s ease; }
     #ytPlayer.player-visible { opacity: 1; }
@@ -80,6 +90,8 @@
     .live-gate-btn { width: 100%; background: var(--primary); border: none; color: #002b30; padding: 15px 18px; border-radius: 14px; font-family: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; transition: .25s; }
     .live-gate-btn:hover { background: #33c0cb; }
     .live-gate-btn:disabled { opacity: .55; cursor: not-allowed; }
+    .player-overlay-btn { position: absolute; top: 16px; right: 16px; z-index: 30; border: 1px solid #29555a; background: rgba(6, 16, 18, .92); color: #d9feff; padding: 10px 14px; border-radius: 999px; font-family: inherit; font-size: .76rem; font-weight: 700; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+    body.player-fullscreen .player-overlay-btn { opacity: 1; pointer-events: auto; }
 
     /* ===== CONTROLS BAR ===== */
     .controls { background: #0a1213; padding: 0; }
@@ -99,7 +111,11 @@
     .live-status-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #ff5858; box-shadow: 0 0 12px rgba(255,88,88,.7); }
     .ctrl-time { font-size: .76rem; color: #7fa6aa; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 0; }
     .ctrl-spacer { flex: 1; }
-    .ctrl-fullscreen { margin-left: 2px; }
+    .player-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .action-btn { border: 1px solid #21484d; background: #132326; color: #d2fcff; padding: 10px 14px; border-radius: 12px; font-family: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; transition: .2s; white-space: nowrap; }
+    .action-btn:hover { background: #1b3538; color: #fff; }
+    .action-btn.primary { background: var(--primary); border-color: var(--primary); color: #032a30; }
+    .action-btn.primary:hover { background: #32bfca; border-color: #32bfca; }
 
     /* Quality menu */
     .quality-menu { position: relative; display: inline-block; }
@@ -111,6 +127,7 @@
     .quality-option { display: block; width: 100%; background: none; border: none; color: #9bd5da; padding: 6px 14px; font-size: .7rem; font-weight: 600; cursor: pointer; text-align: left; font-family: inherit; }
     .quality-option:hover { background: #1a2e30; color: #fff; }
     .quality-option.active { color: var(--primary); }
+    .viewer-insights { display: none !important; }
 
     /* ===== ANALYTICS PANEL ===== */
     .analytics-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px; }
@@ -163,14 +180,20 @@
     footer { text-align: center; color: var(--muted); font-size: .68rem; padding: 40px 24px; letter-spacing: .5px; }
 
     @media (max-width: 600px) {
-      .analytics-panel { grid-template-columns: repeat(2, 1fr); }
-      .a-value { font-size: 1.2rem; }
-      .engagement-ring { flex-direction: column; text-align: center; }
-      .ring-info .ring-detail { justify-content: center; }
+      .nav-inner { padding: 0 16px; flex-wrap: wrap; gap: 10px; }
+      .nav-user { width: 100%; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+      .nav-name { max-width: 44vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .btn-logout { padding: 8px 12px; }
+      .main { padding: 16px; }
       .controls-row { flex-wrap: wrap; }
-      .live-status { width: 100%; justify-content: space-between; }
+      .live-status { width: 100%; justify-content: space-between; align-items: flex-start; flex-direction: column; gap: 8px; }
       .ctrl-spacer { display: none; }
       .live-gate-card { padding: 22px 18px; }
+      .player-actions { width: 100%; }
+      .player-actions > * { flex: 1 1 calc(50% - 4px); }
+      .quality-menu { min-width: 0; }
+      .quality-btn, .action-btn { width: 100%; min-height: 44px; }
+      .player-overlay-btn { top: 10px; right: 10px; padding: 10px 12px; font-size: .72rem; }
     }
   </style>
 </head>
@@ -196,6 +219,7 @@
         <div id="ytPlayer"></div>
         <!-- Transparent shield blocks YouTube UI (prevents seeking) -->
         <div class="click-shield" id="clickShield"></div>
+        <button class="player-overlay-btn" id="btnExitFullscreen" type="button" hidden>Sair da tela cheia</button>
         <div class="live-gate" id="liveGate">
           <div class="live-gate-card">
             <span class="live-gate-pill" id="liveGatePill">AGUARDANDO</span>
@@ -219,19 +243,20 @@
             <span class="ctrl-time" id="ctrlTime">A transmissão começa em instantes</span>
           </div>
           <div class="ctrl-spacer"></div>
-          <div class="quality-menu" id="qualityMenu">
-            <button class="quality-btn" id="btnQuality" title="Qualidade" disabled>Auto</button>
-            <div class="quality-dropdown" id="qualityDropdown"></div>
+          <div class="player-actions">
+            <div class="quality-menu" id="qualityMenu">
+              <button class="quality-btn" id="btnQuality" title="Qualidade" disabled>Qualidade</button>
+              <div class="quality-dropdown" id="qualityDropdown"></div>
+            </div>
+            <button class="action-btn" id="btnTheater" type="button">Modo teatro</button>
+            <button class="action-btn primary" id="btnFullscreen" type="button">Tela cheia</button>
           </div>
-          <button class="ctrl-btn ctrl-fullscreen" id="btnFullscreen" title="Tela cheia">
-            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-          </button>
         </div>
       </div>
     </div>
 
     <!-- ===== HEATMAP LEGEND ===== -->
-    <div class="heatmap-legend">
+    <div class="heatmap-legend viewer-insights" aria-hidden="true">
       <span class="heatmap-legend-title">Mapa de visualização:</span>
       <div style="flex:1;">
         <div class="heatmap-legend-bar">
@@ -242,7 +267,7 @@
     </div>
 
     <!-- ===== ENGAGEMENT RING ===== -->
-    <div class="engagement-ring">
+    <div class="engagement-ring viewer-insights" aria-hidden="true">
       <svg class="ring-svg" viewBox="0 0 120 120">
         <circle class="ring-bg" cx="60" cy="60" r="50" />
         <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="50"
@@ -263,7 +288,7 @@
     </div>
 
     <!-- ===== ANALYTICS CARDS ===== -->
-    <div class="analytics-panel">
+    <div class="analytics-panel viewer-insights" aria-hidden="true">
       <div class="a-card primary">
         <div class="a-icon">⏱️</div>
         <div class="a-value" id="aRealTime">0:00</div>
@@ -287,14 +312,14 @@
     </div>
 
     <!-- CLASS INFO -->
-    <div class="class-info">
+    <div class="class-info viewer-insights" aria-hidden="true">
       <h2>Encontro UP — Construindo Uma Vida Mais Leve</h2>
       <p>Encontro completo de Inteligência Emocional com dinâmica de alto impacto e exercício guiado para controlar a ansiedade. Aprenda técnicas práticas para reduzir o estresse, melhorar seus relacionamentos e viver de forma mais leve.</p>
       <div class="mentor-tag">👨‍🏫 Conduzido por Rodrigo Damaceno</div>
     </div>
 
     <!-- NOTES -->
-    <div class="notes-section">
+    <div class="notes-section viewer-insights" aria-hidden="true">
       <h3>📝 Suas Anotações</h3>
       <textarea class="notes-textarea" id="notesArea" placeholder="Anote os pontos mais importantes da aula aqui..."></textarea>
       <div class="notes-saved" id="notesSaved">✓ Salvo automaticamente</div>
@@ -393,8 +418,10 @@
   let liveJoined = false;
   let livePhase = 'waiting';
   let resumeTimeoutId = 0;
+  let theaterMode = false;
 
   // ===== UI ELEMENTS =====
+  const playerContainer = document.getElementById('playerContainer');
   const clickShield = document.getElementById('clickShield');
   const ytPlayerHost = document.getElementById('ytPlayer');
   const liveGate = document.getElementById('liveGate');
@@ -409,6 +436,9 @@
   const ctrlTime = document.getElementById('ctrlTime');
   const btnQuality = document.getElementById('btnQuality');
   const qualityDropdown = document.getElementById('qualityDropdown');
+  const btnFullscreen = document.getElementById('btnFullscreen');
+  const btnExitFullscreen = document.getElementById('btnExitFullscreen');
+  const btnTheater = document.getElementById('btnTheater');
 
   // ===== YOUTUBE PLAYER =====
   let player = null;
@@ -416,6 +446,47 @@
 
   function setPlayerSurfaceVisible(visible) {
     ytPlayerHost.classList.toggle('player-visible', visible);
+  }
+
+  function getFullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
+  }
+
+  async function requestPlayerFullscreen() {
+    if (playerContainer.requestFullscreen) return playerContainer.requestFullscreen();
+    if (playerContainer.webkitRequestFullscreen) return playerContainer.webkitRequestFullscreen();
+    if (playerContainer.msRequestFullscreen) return playerContainer.msRequestFullscreen();
+    throw new Error('fullscreen-unavailable');
+  }
+
+  async function exitPlayerFullscreen() {
+    if (document.exitFullscreen) return document.exitFullscreen();
+    if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
+    if (document.msExitFullscreen) return document.msExitFullscreen();
+  }
+
+  function updateFullscreenUi() {
+    const isFullscreen = Boolean(getFullscreenElement());
+    document.body.classList.toggle('player-fullscreen', isFullscreen);
+    btnFullscreen.textContent = isFullscreen ? 'Sair da tela cheia' : 'Tela cheia';
+    btnExitFullscreen.hidden = !isFullscreen;
+  }
+
+  function toggleTheaterMode(forceValue) {
+    theaterMode = typeof forceValue === 'boolean' ? forceValue : !theaterMode;
+    document.body.classList.toggle('theater-mode', theaterMode);
+    btnTheater.textContent = theaterMode ? 'Sair do teatro' : 'Modo teatro';
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (getFullscreenElement()) await exitPlayerFullscreen();
+      else await requestPlayerFullscreen();
+    } catch (error) {
+      toggleTheaterMode();
+    } finally {
+      updateFullscreenUi();
+    }
   }
 
   function setGateVisible(visible) {
@@ -668,13 +739,16 @@
   clickShield.addEventListener('click', () => {
     if (!liveJoined && livePhase === 'live') joinLive();
   });
+  btnTheater.addEventListener('click', () => toggleTheaterMode());
+  btnFullscreen.addEventListener('click', toggleFullscreen);
+  btnExitFullscreen.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', updateFullscreenUi);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenUi);
+  document.addEventListener('msfullscreenchange', updateFullscreenUi);
+  document.addEventListener('MSFullscreenChange', updateFullscreenUi);
 
   // ===== FULLSCREEN =====
-  document.getElementById('btnFullscreen').addEventListener('click', () => {
-    const pc = document.getElementById('playerContainer');
-    if (document.fullscreenElement) document.exitFullscreen();
-    else pc.requestFullscreen();
-  });
+  updateFullscreenUi();
 
   // ===== TAB VISIBILITY =====
   document.addEventListener('visibilitychange', () => {
@@ -857,7 +931,9 @@
   // ===== KEYBOARD SHORTCUTS =====
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
-    if (e.key === 'f') document.getElementById('btnFullscreen').click();
+    if (e.key === 'f') btnFullscreen.click();
+    if (e.key === 't') btnTheater.click();
+    if (e.key === 'Escape' && theaterMode && !getFullscreenElement()) toggleTheaterMode(false);
     if (e.key === 'Enter' && !liveJoined && livePhase === 'live') {
       e.preventDefault();
       joinLive();
